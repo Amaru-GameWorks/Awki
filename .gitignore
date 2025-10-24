@@ -40,5 +40,8 @@
 # debug information files
 *.dwo
 
+# Log Files
+*.log
+
 # Build folder
 /Build

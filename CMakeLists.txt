@@ -7,6 +7,12 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets"
 # Set all targes to this folder by default
 set(CMAKE_FOLDER "_External Dependencies")
 
+# Adds the cmake folder that contains extra cmake scripts
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
+
+# Include ThirdParty projects
+include(BuildExternalProjects)
+
 # Set the configuration types that we are going to be using
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
@@ -23,7 +29,7 @@ endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 	
-    # Will show all warnings and treat them as error but only on our projects.
+	# Will show all warnings and treat them as error but only on our projects.
 	set(ALL_WARNINGS_AS_ERRORS "-Wall -Wextra -Werror")
 
 	# Per Target Compiler Settings
@@ -35,11 +41,33 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE")
 
+# Set ThirdParty include directories
+include_directories(SYSTEM
+	ThirdParty/fmt/include
+)
+
+# Set ThirdParty link targets
+list(APPEND LINK_TARGETS
+	fmt::fmt
+)
+
+# Add Engine library
+add_subdirectory(Source/Engine)
+
 # Gather Game project source files
 file(GLOB_RECURSE GAME_SOURCE CONFIGURE_DEPENDS "Source/Game/*.cpp" "Source/Game/*.h")
 
 # Create Game executable
 add_executable(Game ${GAME_SOURCE})
+
+# Set Game dependencies
+add_dependencies(Game Engine)
+
+# Set Game preprocessor definitions
+target_compile_definitions(Game PRIVATE ${ENGINE_DEFINES})
+
+# Link executable with libraries
+target_link_libraries(Game PUBLIC Engine ${LINK_TARGETS})
 
 # Remove the Game target from the default folder
 set_target_properties(Game PROPERTIES FOLDER "")
