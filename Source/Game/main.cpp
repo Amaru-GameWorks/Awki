@@ -6,8 +6,13 @@ int main()
 	{
 		.name = "New Game",
 		.version = {0, 1, 0},
-		.width = 1920,
-		.height = 1080
+		.window = 
+		{
+			.name = descriptor.name,
+			.flags = AkWindowFlag_RESIZABLE,
+			.width = 1920,
+			.height = 1080,
+		}
 	};
 
 	Awki engine;

@@ -37,11 +37,12 @@ class Log
 {
 public:
 	static bool Initialize();
+	static void Deinitialize();
 
 	template<typename ...Arguments>
 	static void AddLogEntry(LogLevel logLevel, const std::source_location& sourceLocation, const fmt::format_string<Arguments...>& format, Arguments&&... arguments)
 	{
-		std::string message = fmt::format(format, arguments...);
+		std::string message = fmt::format(format, std::forward<Arguments>(arguments)...);
 		Print(logLevel, sourceLocation, message);
 	}
 

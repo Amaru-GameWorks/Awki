@@ -32,9 +32,22 @@ bool Log::Initialize()
 	catch (const std::system_error& error)
 	{
 		const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-		fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "[{:%T}][Error] Failed to initialize output log file: {}!\n", now, error.what());
+		fmt::print(fg(fmt::color::indian_red) | fmt::emphasis::bold, "[{:%T}][Error] Failed to initialize output log file: {}!\n", now, error.what());
 		return false;
 	}
+}
+
+void Log::Deinitialize()
+{
+	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+
+	const std::source_location sourceLocation = std::source_location::current();
+	const std::string filePath = sourceLocation.file_name();
+	const std::string fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
+
+	fmt::ostream& logFile = GetOutputStream();
+	logFile.print("[{:%T}][INFO][{}:{}] Awki Log Ended\n", now, fileNameOnly, sourceLocation.line());
+	fmt::print(fg(fmt::color::cornflower_blue), "[{:%T}][INFO][{}:{}] Awki Log Ended\n", now, fileNameOnly, sourceLocation.line());
 }
 
 void Log::Print(LogLevel logLevel, const std::source_location& sourceLocation, std::string_view message)
@@ -44,7 +57,7 @@ void Log::Print(LogLevel logLevel, const std::source_location& sourceLocation, s
 		fg(fmt::color::cornflower_blue),						//INFO
 		fg(fmt::color::white),									//TRACE
 		fg(fmt::color::yellow), 								//WARNING
-		fg(fmt::color::indian_red),								//ERROR
+		fg(fmt::color::indian_red) | fmt::emphasis::bold,		//ERROR
 		fg(fmt::color::dark_red) | bg(fmt::color::white_smoke)	//CRITICAL
 	};
 

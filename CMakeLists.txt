@@ -44,11 +44,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE")
 # Set ThirdParty include directories
 include_directories(SYSTEM
 	ThirdParty/fmt/include
+	ThirdParty/SDL/include
 )
 
 # Set ThirdParty link targets
 list(APPEND LINK_TARGETS
 	fmt::fmt
+	SDL3-static
 )
 
 # Add Engine library

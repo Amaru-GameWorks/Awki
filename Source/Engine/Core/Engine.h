@@ -1,12 +1,14 @@
 #pragma once
 #include "Version.h"
+#include "Platform/Window.h"
+
+#include <memory>
 
 struct AkInstanceDescriptor
 {
 	std::string name = {};
 	AkVersion version = {};
-	uint16_t width = 1280;
-	uint16_t height = 720;
+	AkWindowDescriptor window = {};
 };
 
 class Awki
@@ -17,4 +19,7 @@ public:
 	bool Initialize(const AkInstanceDescriptor& descriptor);
 	void Deinitialize();
 	void Run();
+
+private:
+	std::shared_ptr<class AkWindow> m_Window = nullptr;
 };
