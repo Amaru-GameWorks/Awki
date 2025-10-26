@@ -6,7 +6,7 @@
 
 struct AkInstanceDescriptor
 {
-	std::string name = {};
+	std::string_view name = {};
 	AkVersion version = {};
 	AkWindowDescriptor window = {};
 };
@@ -21,5 +21,5 @@ public:
 	void Run();
 
 private:
-	std::shared_ptr<class AkWindow> m_Window = nullptr;
+	std::shared_ptr<AkWindow> m_Window = nullptr;
 };

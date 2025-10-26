@@ -1,7 +1,4 @@
 #pragma once
-#include <string>
-#include <cstdint>
-
 #include <fmt/format.h>
 
 class AkVersion

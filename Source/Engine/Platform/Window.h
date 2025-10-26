@@ -15,13 +15,6 @@ enum AkWindowFlagBits : uint16_t
 };
 using AkWindowFlags = std::underlying_type<AkWindowFlagBits>::type;
 
-enum class AkWindowMode
-{
-	WINDOWED,
-	FULLSCREEN,
-	WINDOWED_FULLSCREEN
-};
-
 struct AkWindowDescriptor
 {
 	std::string_view name;
@@ -35,6 +28,31 @@ class AkWindow
 public:
 	AkWindow(const AkWindowDescriptor& descriptor);
 	~AkWindow();
+
+	void SetTitle(std::string_view title);
+	
+	void SetSize(uint32_t width, uint32_t height);
+	void GetSize(uint32_t& width, uint32_t& height);
+
+	void SetPosition(uint32_t x, uint32_t y);
+	void GetPosition(uint32_t& x, uint32_t& y);
+
+	void SetFullScreen(bool state);
+	void SetBorderless(bool state);
+	void SetResizable(bool state);
+	void SetAlwaysOnTop(bool state);
+	void SetHidden(bool state);
+
+	void Maximize();
+	bool IsMaximized() const;
+	
+	void Minimize();
+	bool IsMinimized() const;
+	
+	void Focus();
+	bool HasFocus() const;
+	bool HasInputFocus() const;
+	bool HasMouseFocus() const;
 
 private:
 	struct SDL_Window* m_WindowHandle = nullptr;

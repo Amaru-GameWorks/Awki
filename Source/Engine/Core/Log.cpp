@@ -3,6 +3,7 @@
 #include <fmt/os.h>
 #include <fmt/color.h>
 #include <fmt/chrono.h>
+
 #include <filesystem>
 
 fmt::ostream& GetOutputStream()
@@ -11,7 +12,7 @@ fmt::ostream& GetOutputStream()
 	return sLogFile;
 }
 
-bool Log::Initialize()
+bool AkLog::Initialize()
 {
 	try
 	{
@@ -22,11 +23,11 @@ bool Log::Initialize()
 		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
 		const std::source_location sourceLocation = std::source_location::current();
-		const std::string filePath = sourceLocation.file_name();
-		const std::string fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
+		const std::string_view filePath = sourceLocation.file_name();
+		const std::string_view fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
 
-		logFile.print("[{:%T}][INFO][{}:{}] Awki Log Started\n", now, fileNameOnly, sourceLocation.line());
-		fmt::print(fg(fmt::color::cornflower_blue), "[{:%T}][INFO][{}:{}] Awki Log Started\n", now, fileNameOnly, sourceLocation.line());
+		logFile.print("[{:%T}][INFO][{}:{}] Awki AkLog Started\n", now, fileNameOnly, sourceLocation.line());
+		fmt::print(fg(fmt::color::cornflower_blue), "[{:%T}][INFO][{}:{}] Awki AkLog Started\n", now, fileNameOnly, sourceLocation.line());
 		return true;
 	}
 	catch (const std::system_error& error)
@@ -37,20 +38,20 @@ bool Log::Initialize()
 	}
 }
 
-void Log::Deinitialize()
+void AkLog::Deinitialize()
 {
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
 	const std::source_location sourceLocation = std::source_location::current();
-	const std::string filePath = sourceLocation.file_name();
-	const std::string fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
+	const std::string_view filePath = sourceLocation.file_name();
+	const std::string_view fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
 
 	fmt::ostream& logFile = GetOutputStream();
-	logFile.print("[{:%T}][INFO][{}:{}] Awki Log Ended\n", now, fileNameOnly, sourceLocation.line());
-	fmt::print(fg(fmt::color::cornflower_blue), "[{:%T}][INFO][{}:{}] Awki Log Ended\n", now, fileNameOnly, sourceLocation.line());
+	logFile.print("[{:%T}][INFO][{}:{}] Awki AkLog Ended\n", now, fileNameOnly, sourceLocation.line());
+	fmt::print(fg(fmt::color::cornflower_blue), "[{:%T}][INFO][{}:{}] Awki AkLog Ended\n", now, fileNameOnly, sourceLocation.line());
 }
 
-void Log::Print(LogLevel logLevel, const std::source_location& sourceLocation, std::string_view message)
+void AkLog::Print(LogLevel logLevel, const std::source_location& sourceLocation, std::string_view message)
 {
 	constexpr fmt::text_style kTextStyles[5] =
 	{
@@ -74,8 +75,8 @@ void Log::Print(LogLevel logLevel, const std::source_location& sourceLocation, s
 	const uint32_t logLevelIndex = static_cast<uint32_t>(logLevel);
 	const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 	
-	const std::string filePath = sourceLocation.file_name();
-	const std::string fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
+	const std::string_view filePath = sourceLocation.file_name();
+	const std::string_view fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
 	const std::string fullMessage = fmt::format("[{:%T}][{}][{}:{}] {}", now, kLogLevel[logLevelIndex], fileNameOnly, sourceLocation.line(), message);
 
 	sLogFile.print("{}\n", fullMessage);
