@@ -6,6 +6,10 @@
 
 #include <filesystem>
 
+#ifdef _MSC_VER
+#include <Windows.h>
+#endif
+
 fmt::ostream& GetOutputStream()
 {
 	static fmt::ostream sLogFile = fmt::output_file("Awki.log");
@@ -81,4 +85,8 @@ void AkLog::Print(LogLevel logLevel, const std::source_location& sourceLocation,
 
 	sLogFile.print("{}\n", fullMessage);
 	fmt::print(kTextStyles[logLevelIndex], "{}\n", fullMessage);
+
+#ifdef _MSC_VER
+	OutputDebugString((fullMessage + "\n").c_str());
+#endif
 }

@@ -1,4 +1,7 @@
 #pragma once
+#include <glm/vec2.hpp>
+
+#include <vector>
 #include <string_view>
 
 enum AkWindowFlagBits : uint16_t
@@ -23,6 +26,13 @@ struct AkWindowDescriptor
 	uint16_t height = 720;
 };
 
+struct AkDisplayMode
+{
+	uint32_t width = 1920;
+	uint32_t height = 1080;
+	float refreshRate = 60.f;
+};
+
 class AkWindow
 {
 public:
@@ -31,13 +41,15 @@ public:
 
 	void SetTitle(std::string_view title);
 	
-	void SetSize(uint32_t width, uint32_t height);
-	void GetSize(uint32_t& width, uint32_t& height);
+	void SetSize(const glm::uvec2& size);
+	glm::uvec2 GetSize();
 
-	void SetPosition(uint32_t x, uint32_t y);
-	void GetPosition(uint32_t& x, uint32_t& y);
+	void SetPosition(const glm::uvec2& position);
+	glm::uvec2 GetPosition();
 
-	void SetFullScreen(bool state);
+	void SetBorderlessFullScreen(bool state);
+	void SetExclusiveFullscreen(const AkDisplayMode& displayMode);
+
 	void SetBorderless(bool state);
 	void SetResizable(bool state);
 	void SetAlwaysOnTop(bool state);
@@ -53,6 +65,8 @@ public:
 	bool HasFocus() const;
 	bool HasInputFocus() const;
 	bool HasMouseFocus() const;
+
+	static std::vector<AkDisplayMode> GetAvailableDisplayModes();
 
 private:
 	struct SDL_Window* m_WindowHandle = nullptr;

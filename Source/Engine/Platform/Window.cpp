@@ -42,59 +42,71 @@ void AkWindow::SetTitle(std::string_view title)
 		AkLogError("Failed to set window title: {}", SDL_GetError());
 }
 
-void AkWindow::SetSize(uint32_t width, uint32_t height)
+void AkWindow::SetSize(const glm::uvec2& size)
 {
-	if (const SDL_DisplayMode* displayMode = SDL_GetWindowFullscreenMode(m_WindowHandle))
-	{
-		SDL_DisplayMode newDisplayMode = *displayMode;
-		newDisplayMode.w = static_cast<int>(width);
-		newDisplayMode.h = static_cast<int>(height);
-		if(!SDL_SetWindowFullscreenMode(m_WindowHandle, &newDisplayMode))
-			AkLogError("Failed to set window size: {}", SDL_GetError());
-	}
-	else
-	{
-		if(!SDL_SetWindowSize(m_WindowHandle, static_cast<int>(width), static_cast<int>(height)))
-			AkLogError("Failed to set window size: {}", SDL_GetError());
-	}
+
+	if(!SDL_SetWindowSize(m_WindowHandle, static_cast<int>(size.x), static_cast<int>(size.y)))
+		AkLogError("Failed to set window size: {}", SDL_GetError());
 }
 
-void AkWindow::GetSize(uint32_t& width, uint32_t& height)
+glm::uvec2 AkWindow::GetSize()
 {
-	int w = 1, h = 1;
-	if (!SDL_GetWindowSizeInPixels(m_WindowHandle, &w, &h))
-	{
+	int width = 1, height = 1;
+	if (!SDL_GetWindowSizeInPixels(m_WindowHandle, &width, &height))
 		AkLogError("Failed to get window size: {}", SDL_GetError());
-		return;
-	}
 
-	width = static_cast<uint32_t>(w);
-	height = static_cast<uint32_t>(h);
+	return { width, height };
 }
 
-void AkWindow::SetPosition(uint32_t x, uint32_t y)
+void AkWindow::SetPosition(const glm::uvec2& position)
 {
-	if(!SDL_SetWindowPosition(m_WindowHandle, static_cast<int>(x), static_cast<int>(y)))
+	if(!SDL_SetWindowPosition(m_WindowHandle, static_cast<int>(position.x), static_cast<int>(position.y)))
 		AkLogError("Failed to set window position: {}", SDL_GetError());
 }
 
-void AkWindow::GetPosition(uint32_t& x, uint32_t& y)
+glm::uvec2 AkWindow::GetPosition()
 {
-	int xx = 0, yy = 0;
-	if (!SDL_GetWindowPosition(m_WindowHandle, &xx, &yy))
-	{
+	int x = 0, y = 0;
+	if (!SDL_GetWindowPosition(m_WindowHandle, &x, &y))
 		AkLogError("Failed to get window position: {}", SDL_GetError());
+
+	return { x, y };
+}
+
+void AkWindow::SetBorderlessFullScreen(bool state)
+{
+	if (!SDL_SetWindowFullscreenMode(m_WindowHandle, nullptr))
+	{
+		AkLogError("Failed to reset fullscreen display mode: {}", SDL_GetError());
 		return;
 	}
 
-	x = static_cast<uint32_t>(xx);
-	y = static_cast<uint32_t>(yy);
-}
-
-void AkWindow::SetFullScreen(bool state)
-{
 	if (!SDL_SetWindowFullscreen(m_WindowHandle, state))
 		AkLogError("Failed to change window screen mode: {}", SDL_GetError());
+}
+
+void AkWindow::SetExclusiveFullscreen(const AkDisplayMode& displayMode)
+{
+	SDL_DisplayMode modeToUse = {};
+	if (!SDL_GetClosestFullscreenDisplayMode(SDL_GetPrimaryDisplay(), static_cast<int>(displayMode.width), static_cast<int>(displayMode.height), displayMode.refreshRate, true, &modeToUse))
+	{
+		AkLogError("Failed to match display mode to available display modes: {}", SDL_GetError());
+		return;
+	}
+
+	if (!SDL_SetWindowFullscreenMode(m_WindowHandle, &modeToUse))
+	{
+		AkLogError("Failed to set fullscreen display mode: {}", SDL_GetError());
+		return;
+	}
+
+	if (!SDL_SetWindowFullscreen(m_WindowHandle, true))
+	{
+		AkLogError("Failed to change window screen mode: {}", SDL_GetError());
+		return;
+	}
+
+	SDL_SyncWindow(m_WindowHandle);
 }
 
 void AkWindow::SetBorderless(bool state)
@@ -170,4 +182,23 @@ bool AkWindow::HasInputFocus() const
 bool AkWindow::HasMouseFocus() const
 {
 	return SDL_GetWindowFlags(m_WindowHandle) & SDL_WINDOW_MOUSE_FOCUS;
+}
+
+std::vector<AkDisplayMode> AkWindow::GetAvailableDisplayModes()
+{
+	int displayModesCount = 0;
+	if (SDL_DisplayMode** displayModes = SDL_GetFullscreenDisplayModes(SDL_GetPrimaryDisplay(), &displayModesCount))
+	{
+		std::vector<AkDisplayMode> outDisplayModes;
+		outDisplayModes.reserve(displayModesCount);
+
+		for (int i = 0; i < displayModesCount; ++i)
+		{
+			SDL_DisplayMode* mode = displayModes[i];
+			outDisplayModes.push_back({ static_cast<uint32_t>(mode->w), static_cast<uint32_t>(mode->h), mode->refresh_rate });
+		}
+	}
+	
+	AkLogError("Failed to get window display modes: {}", SDL_GetError());
+	return {};
 }

@@ -42,37 +42,5 @@ void Awki::Run()
 	while (!AkEvents::ShouldClose())
 	{
 		AkEvents::PollEvents();
-
-		if (AkEvents::GetKeyDown(AkKeyCode::SPACE))
-			m_Window->SetFullScreen(true, AkFullscreenMode::EXCLUSIVE);
-
-		if (AkEvents::GetKeyUp(AkKeyCode::SPACE))
-		{
-			uint32_t w, h = 0;
-			m_Window->GetSize(w, h);
-			AkLogTrace("Window Size {} : {}", w, h);
-		}
-
-		if (AkEvents::GetMouseButtonDown(AkMouseButton::X2))
-			m_Window->SetFullScreen(false);
-
-		if (AkEvents::GetMouseButtonUp(AkMouseButton::X2))
-		{
-			uint32_t w, h = 0;
-			m_Window->GetSize(w, h);
-			AkLogTrace("Window Size {} : {}", w, h);
-		}
-
-		if (AkEvents::GetKeyDown(AkKeyCode::ENTER))
-			m_Window->SetSize(100, 100);
-
-		if (AkEvents::GetKeyUp(AkKeyCode::ENTER))
-		{
-			uint32_t w, h = 0;
-			m_Window->GetSize(w, h);
-			AkLogTrace("Window Size {} : {}", w, h);
-		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 	}
 }

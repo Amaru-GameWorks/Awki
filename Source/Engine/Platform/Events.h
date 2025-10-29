@@ -1,4 +1,6 @@
 #pragma once
+#include <glm/vec2.hpp>
+
 #include <unordered_map>
 
 enum class AkKeyCode
@@ -134,6 +136,10 @@ public:
 	static void TriggerQuit();
 	static bool ShouldClose();
 
+	static const glm::vec2& GetMouseWheel();
+	static const glm::vec2& GetMouseDelta();
+	static const glm::vec2& GetMousePosition();
+
 	static bool GetKey(AkKeyCode key);
 	static bool GetKeyUp(AkKeyCode key);
 	static bool GetKeyDown(AkKeyCode key);
@@ -145,7 +151,7 @@ public:
 private:
 	struct AkInputState
 	{
-		enum class State
+		enum
 		{
 			PRESSED,
 			HELD,
@@ -156,23 +162,19 @@ private:
 		class AkButtonState
 		{
 		public:
-			State GetState() const { return m_Current; }
-			void SetState(const State newState) { m_Current = newState; }
-
-			void Validate()
-			{
-				if (m_Current == State::PRESSED)
-					m_Current = State::HELD;
-				else if (m_Current == State::RELEASED)
-					m_Current = State::IDLE;
-			}
+			void Validate();
+			uint32_t GetState() const;
+			void SetState(const uint32_t newState);
 
 		private:
-			State m_Current = State::IDLE;
+			uint32_t m_Current = IDLE;
 		};
 
-		std::unordered_map<AkKeyCode, AkButtonState> keyStates;
-		std::unordered_map<AkMouseButton, AkButtonState> mouseButtonStates;
+		glm::vec2 mouseDelta;
+		glm::vec2 mouseWheel;
+		glm::vec2 mousePosition;
+		std::unordered_map<uint32_t, AkButtonState> keyStates;
+		std::unordered_map<uint32_t, AkButtonState> mouseButtonStates;
 
 		void BeginFrame();
 	};
