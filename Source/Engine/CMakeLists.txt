@@ -4,8 +4,17 @@ project(Awki)
 # Gather Engine project source files
 file(GLOB_RECURSE ENGINE_SOURCE CONFIGURE_DEPENDS "*.cpp" "*.h")
 
+# Add VS Natvis files
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	set(NATVIS_FILES
+		../../ThirdParty/glm/util/glm.natvis
+	)
+else()
+	set(NATVIS_FILES)
+endif()
+
 # Add the Engine library
-add_library(Engine ${ENGINE_SOURCE})
+add_library(Engine ${ENGINE_SOURCE} ${NATVIS_FILES})
 
 # Source grouping
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCE})
@@ -16,7 +25,13 @@ set_target_properties(Engine PROPERTIES FOLDER "")
 # Enable C++20
 target_compile_features(Engine PUBLIC cxx_std_20)
 
-#Define engine preprocessor definitions list
+# Set engine preprocessor definitions
+list(APPEND ENGINE_DEFINES
+	GLM_FORCE_INTRINSICS
+	GLM_FORCE_DEPTH_ZERO_TO_ONE
+	GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+)
+
 if(WIN32)
 	list(APPEND ENGINE_DEFINES
 		WIN32_LEAN_AND_MEAN

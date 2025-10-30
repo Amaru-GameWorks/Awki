@@ -23,8 +23,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	set(ALL_WARNINGS_AS_ERRORS "/external:anglebrackets /external:W0 /analyze:external- /WX /W4")
 
 	# Per Target Compiler Settings
-	set(CMAKE_CXX_FLAGS_DEBUG "/MP /GR- /Od /wd4100 /wd4189 ${ALL_WARNINGS_AS_ERRORS}")
-	set(CMAKE_CXX_FLAGS_RELEASE "/MP /GR- /Ot ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_DEBUG "/arch:AVX /MP /GR- /Od /wd4100 /wd4189 ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_RELEASE "/arch:AVX /MP /GR- /Ot ${ALL_WARNINGS_AS_ERRORS}")
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -33,8 +33,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQ
 	set(ALL_WARNINGS_AS_ERRORS "-Wall -Wextra -Werror")
 
 	# Per Target Compiler Settings
-	set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-rtti -Wno-unused-variable -Wno-unused-parameter ${ALL_WARNINGS_AS_ERRORS}")
-	set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-rtti ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_DEBUG "-mavx -O0 -g -fno-rtti -Wno-unused-variable -Wno-unused-parameter ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_RELEASE "-mavx -O3 -fno-rtti ${ALL_WARNINGS_AS_ERRORS}")
 endif()
 
 # Base preprocessor definitions
@@ -44,11 +44,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE")
 # Set ThirdParty include directories
 include_directories(SYSTEM
 	ThirdParty/fmt/include
+	ThirdParty/glm
+	ThirdParty/SDL/include
 )
 
 # Set ThirdParty link targets
 list(APPEND LINK_TARGETS
 	fmt::fmt
+	SDL3-static
 )
 
 # Add Engine library
@@ -86,6 +89,10 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source/Game FILES ${GAME_SOURCE})
 
 # MSVC Settings
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
+	# Do not spawn a console when running on release
+	set_target_properties(Game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
+
 	# Set Visual Studio default startup project and debugging startup directory
 	set_target_properties(Game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ..)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Game)
