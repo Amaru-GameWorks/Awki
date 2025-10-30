@@ -282,18 +282,18 @@ void AkEvents::AkInputState::BeginFrame()
 
 void AkEvents::AkInputState::AkButtonState::Validate()
 {
-	if (m_Current == AkInputState::PRESSED)
-		m_Current = AkInputState::HELD;
-	else if (m_Current == AkInputState::RELEASED)
-		m_Current = AkInputState::IDLE;
+	if (m_State == AkInputState::PRESSED)
+		m_State = AkInputState::HELD;
+	else if (m_State == AkInputState::RELEASED)
+		m_State = AkInputState::IDLE;
 }
 
 uint32_t AkEvents::AkInputState::AkButtonState::GetState() const
 {
-	return m_Current;
+	return m_State;
 }
 
 void AkEvents::AkInputState::AkButtonState::SetState(const uint32_t newState)
 {
-	m_Current = newState;
+	m_State = newState;
 }

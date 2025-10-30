@@ -3,10 +3,8 @@
 #include <fmt/os.h>
 #include <fmt/color.h>
 #include <fmt/chrono.h>
-
 #include <filesystem>
-
-#ifdef _MSC_VER
+#if DEBUG && _MSC_VER
 #include <Windows.h>
 #endif
 
@@ -86,7 +84,7 @@ void AkLog::Print(LogLevel logLevel, const std::source_location& sourceLocation,
 	sLogFile.print("{}\n", fullMessage);
 	fmt::print(kTextStyles[logLevelIndex], "{}\n", fullMessage);
 
-#ifdef _MSC_VER
+#if DEBUG && _MSC_VER
 	OutputDebugString((fullMessage + "\n").c_str());
 #endif
 }

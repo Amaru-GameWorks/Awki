@@ -3,8 +3,6 @@
 #include "Platform/Window.h"
 #include "Platform/Events.h"
 
-#include <thread>
-
 bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 {
 	if (!AkLog::Initialize())

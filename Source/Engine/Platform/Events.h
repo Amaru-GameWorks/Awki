@@ -1,6 +1,5 @@
 #pragma once
 #include <glm/vec2.hpp>
-
 #include <unordered_map>
 
 enum class AkKeyCode
@@ -167,7 +166,7 @@ private:
 			void SetState(const uint32_t newState);
 
 		private:
-			uint32_t m_Current = IDLE;
+			uint32_t m_State = IDLE;
 		};
 
 		glm::vec2 mouseDelta;

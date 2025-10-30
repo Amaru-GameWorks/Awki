@@ -2,7 +2,6 @@
 #include "Platform/Interop.h"
 
 #include <fmt/format.h>
-
 #include <string_view>
 #include <source_location>
 

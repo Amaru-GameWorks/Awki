@@ -89,6 +89,10 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source/Game FILES ${GAME_SOURCE})
 
 # MSVC Settings
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
+	# Do not spawn a console when running on release
+	set_target_properties(Game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
+
 	# Set Visual Studio default startup project and debugging startup directory
 	set_target_properties(Game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ..)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Game)
