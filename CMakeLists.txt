@@ -10,6 +10,9 @@ set(CMAKE_FOLDER "_External Dependencies")
 # Adds the cmake folder that contains extra cmake scripts
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 
+# Find required libraries
+find_package(Vulkan)
+
 # Include ThirdParty projects
 include(BuildExternalProjects)
 
@@ -43,6 +46,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE")
 
 # Set ThirdParty include directories
 include_directories(SYSTEM
+	${Vulkan_INCLUDE_DIR}
+
 	ThirdParty/fmt/include
 	ThirdParty/glm
 	ThirdParty/SDL/include
@@ -52,6 +57,7 @@ include_directories(SYSTEM
 list(APPEND LINK_TARGETS
 	fmt::fmt
 	SDL3-static
+	Vulkan::Vulkan
 )
 
 # Add Engine library

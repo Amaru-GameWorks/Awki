@@ -1,0 +1,358 @@
+#include "GfxDevice.h"
+#include "Core/Log.h"
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+
+#define VULKAN_HPP_NO_CONSTRUCTORS
+#include <vulkan/vulkan.hpp>
+
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
+static vk::Device sDevice = {};
+static vk::Instance sInstance = {};
+static vk::PhysicalDevice sPhysicalDevice = {};
+static VmaAllocator sMemoryAllocator = {};
+
+static vk::Queue sGraphicsQueue = {};
+static vk::Queue sComputeQueue = {};
+static vk::Queue sTransferQueue = {};
+
+static constexpr const char* kValidationLayerName = "VK_LAYER_KHRONOS_validation";
+
+bool AkGfxDevice::Initialize()
+{
+	if (!SDL_Init(SDL_INIT_VIDEO))
+	{
+		AkLogError("Couldn't initialize SDL Video: {}", SDL_GetError());
+		return false;
+	}
+
+	if (!SDL_Vulkan_LoadLibrary(NULL))
+	{
+		AkLogError("Failed to load SDL vulkan entrypoints: {}", SDL_GetError());
+		return false;
+	}
+
+	if (!CreateInstance())
+		return false;
+
+	if (!CreateLogicalDevices())
+		return false;
+
+	if (!CreateMemoryAllocator())
+		return false;
+
+	return true;
+}
+
+void AkGfxDevice::Deinitialize()
+{
+	vmaDestroyAllocator(sMemoryAllocator);
+
+	sDevice.destroy();
+	sInstance.destroy();
+}
+
+vk::Device* AkGfxDevice::GetDevice()
+{
+	return &sDevice;
+}
+
+VmaAllocator_T* AkGfxDevice::GetMemoryAllocator()
+{
+	return sMemoryAllocator;
+}
+
+vk::Queue* AkGfxDevice::GetGraphicsQueue()
+{
+	return &sGraphicsQueue;
+}
+
+vk::Queue* AkGfxDevice::GetComputeQueue()
+{
+	return &sComputeQueue;
+}
+
+vk::Queue* AkGfxDevice::GetTransferQueue()
+{
+	return &sTransferQueue;
+}
+
+bool AkGfxDevice::SupportsAsyncCompute()
+{
+	return m_SupportsAsyncCompute;
+}
+
+bool AkGfxDevice::SupportsAsyncTransfer()
+{
+	return m_SupportsAsyncTransfer;
+}
+
+bool AkGfxDevice::CreateInstance()
+{
+	vk::ApplicationInfo applicationInfo =
+	{
+		.apiVersion = VK_API_VERSION_1_1
+	};
+
+	vk::InstanceCreateInfo instanceCreateInfo =
+	{
+		.pApplicationInfo = &applicationInfo
+	};
+
+	Uint32 extensionsCount = 0;
+	const char* const* sdlNeededExtensions = SDL_Vulkan_GetInstanceExtensions(&extensionsCount);
+
+	std::vector<const char*> extensions;
+	extensions.reserve(extensionsCount);
+
+	for (Uint32 i = 0; i < extensionsCount; ++i)
+		extensions.push_back(sdlNeededExtensions[i]);
+
+	std::vector<vk::LayerProperties> layerProperties = vk::enumerateInstanceLayerProperties();
+	auto foundValidationLayer = std::find_if(layerProperties.begin(), layerProperties.end(), [](vk::LayerProperties& layer) { return strcmp(kValidationLayerName, layer.layerName) == 0; });
+	if (foundValidationLayer != layerProperties.end())
+	{
+		instanceCreateInfo.enabledLayerCount = 1;
+		instanceCreateInfo.ppEnabledLayerNames = &kValidationLayerName;
+		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	}
+
+	instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
+	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+
+	try
+	{
+		sInstance = vk::createInstance(instanceCreateInfo);
+	}
+	catch (const std::exception& exception)
+	{
+		AkLogError("Failed to create vulkan instance: {}", exception.what());
+		return false;
+	}
+
+	return true;
+}
+
+bool AkGfxDevice::CreateLogicalDevices()
+{
+	const std::vector<vk::PhysicalDevice> physicalDevices = sInstance.enumeratePhysicalDevices();
+
+	uint32_t maxDeviceScore = 0;
+	size_t selectedDeviceIndex = 0;
+	uint32_t selectedDeviceGraphicsQueueFamilyIndex = UINT32_MAX;
+	uint32_t selectedDeviceComputeQueueFamilyIndex = UINT32_MAX;
+	uint32_t selectedDeviceTransferQueueFamilyIndex = UINT32_MAX;
+
+	for (const vk::PhysicalDevice& device : physicalDevices)
+	{
+		uint32_t currentDeviceScore = 0;
+		const vk::PhysicalDeviceProperties properties = device.getProperties();
+
+		AkLogInfo("Found device: {}", properties.deviceName.data());
+		switch (properties.deviceType)
+		{
+			case vk::PhysicalDeviceType::eDiscreteGpu:
+			{
+				AkLogInfo("\t Type: Discrete GPU");
+				currentDeviceScore += 20;
+				break;
+			}
+			case vk::PhysicalDeviceType::eIntegratedGpu:
+			{
+				AkLogInfo("\t Type: Integrated GPU");
+				currentDeviceScore += 10;
+				break;
+			}
+			case vk::PhysicalDeviceType::eVirtualGpu:
+			{
+				AkLogInfo("\t Type: Virtual GPU");
+				currentDeviceScore += 5;
+				break;
+			}
+			case vk::PhysicalDeviceType::eCpu:
+			{
+				AkLogInfo("\t Type: CPU");
+				currentDeviceScore += 1;
+				break;
+			}
+			case vk::PhysicalDeviceType::eOther:
+			{
+				AkLogInfo("\t Type: Other");
+				break;
+			}
+		}
+
+		bool foundAsyncComputeQueue = false;
+		bool foundAsyncTransferQueue = false;
+		bool foundGraphicsComputeQueue = false;
+
+		uint32_t graphicsQueueFamilyIndex = 0;
+		uint32_t computeQueueFamilyIndex = 0;
+		uint32_t transferQueueFamilyIndex = 0;
+
+		const std::vector<vk::QueueFamilyProperties> queueFamilyProperties = device.getQueueFamilyProperties();
+		for (size_t i = 0; i < queueFamilyProperties.size(); ++i)
+		{
+			const vk::QueueFamilyProperties& queueProperties = queueFamilyProperties[i];
+
+			if (queueProperties.queueCount > 0)
+			{
+				const bool supportsGraphics = static_cast<bool>(queueProperties.queueFlags & vk::QueueFlagBits::eGraphics);
+				const bool supportsCompute = static_cast<bool>(queueProperties.queueFlags & vk::QueueFlagBits::eCompute);
+				const bool supportsTransfers = static_cast<bool>(queueProperties.queueFlags & vk::QueueFlagBits::eTransfer);
+
+				if (!foundGraphicsComputeQueue && supportsGraphics && supportsCompute)
+				{
+					foundGraphicsComputeQueue = true;
+					currentDeviceScore += 2;
+
+					graphicsQueueFamilyIndex = static_cast<uint32_t>(i);
+					computeQueueFamilyIndex = static_cast<uint32_t>(i);
+					transferQueueFamilyIndex = static_cast<uint32_t>(i);
+
+					AkLogInfo("\t Supports graphics");
+					AkLogInfo("\t Supports compute");
+				}
+
+				if (!foundAsyncComputeQueue && supportsCompute && !supportsGraphics)
+				{
+					foundAsyncComputeQueue = true;
+					currentDeviceScore += 1;
+
+					computeQueueFamilyIndex = static_cast<uint32_t>(i);
+					AkLogInfo("\t Supports async compute");
+				}
+
+				if (!foundAsyncTransferQueue && supportsTransfers && !supportsGraphics && !supportsCompute)
+				{
+					foundAsyncTransferQueue = true;
+					currentDeviceScore += 1;
+
+					transferQueueFamilyIndex = static_cast<uint32_t>(i);
+					AkLogInfo("\t Supports async transfers");
+				}
+			}
+		}
+
+		if (currentDeviceScore > maxDeviceScore)
+		{
+			maxDeviceScore = currentDeviceScore;
+			selectedDeviceGraphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
+			selectedDeviceComputeQueueFamilyIndex = computeQueueFamilyIndex;
+			selectedDeviceTransferQueueFamilyIndex = transferQueueFamilyIndex;
+
+			sPhysicalDevice = device;
+		}
+	}
+
+	if (selectedDeviceGraphicsQueueFamilyIndex == UINT32_MAX)
+	{
+		AkLogError("Failed to find a suitable graphics device");
+		return false;
+	}
+
+	auto IsExtensionAvailable = [](const std::vector<vk::ExtensionProperties>& extensions, const char* extensionName)
+	{
+		auto foundValidationLayer = std::find_if(extensions.begin(), extensions.end(), [extensionName](const vk::ExtensionProperties& extension)
+		{
+			return strcmp(extensionName, extension.extensionName) == 0;
+		});
+
+		return foundValidationLayer != extensions.end();
+	};
+
+	AkLogInfo("Selected device: {}", sPhysicalDevice.getProperties().deviceName.data());
+
+	std::vector<const char*> extensionToEnable = {};
+	std::vector<vk::ExtensionProperties> deviceExtensions = sPhysicalDevice.enumerateDeviceExtensionProperties();
+
+	//Required Extensions
+	if (!IsExtensionAvailable(deviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
+	{
+		AkLogError("Required extension '{}' is not available", VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		return false;
+	}
+
+	extensionToEnable.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+	//Optional Extensions
+	if (IsExtensionAvailable(deviceExtensions, VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
+		extensionToEnable.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+
+	if (IsExtensionAvailable(deviceExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
+		extensionToEnable.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+
+	//Get Device queues
+	std::vector<float> queuePriorities = { 1.0f };
+	std::vector<vk::DeviceQueueCreateInfo> deviceQueueInfos;
+
+	vk::DeviceQueueCreateInfo queueCreateInfo =
+	{
+		.queueFamilyIndex = selectedDeviceGraphicsQueueFamilyIndex,
+		.queueCount = 1,
+		.pQueuePriorities = queuePriorities.data()
+	};
+
+	//Grahics queue
+	deviceQueueInfos.push_back(queueCreateInfo);
+
+	//Async Compute Queue
+	if (selectedDeviceComputeQueueFamilyIndex != selectedDeviceGraphicsQueueFamilyIndex)
+	{
+		m_SupportsAsyncCompute = true;
+		queueCreateInfo.queueFamilyIndex = selectedDeviceComputeQueueFamilyIndex;
+		deviceQueueInfos.push_back(queueCreateInfo);
+	}
+
+	//Async Transfer Queue
+	if (selectedDeviceTransferQueueFamilyIndex != selectedDeviceGraphicsQueueFamilyIndex)
+	{
+		m_SupportsAsyncTransfer = true;
+		queueCreateInfo.queueFamilyIndex = selectedDeviceTransferQueueFamilyIndex;
+		deviceQueueInfos.push_back(queueCreateInfo);
+	}
+
+	vk::DeviceCreateInfo deviceCreateInfo =
+	{
+		.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueInfos.size()),
+		.pQueueCreateInfos = deviceQueueInfos.data(),
+		.enabledExtensionCount = static_cast<uint32_t>(extensionToEnable.size()),
+		.ppEnabledExtensionNames = extensionToEnable.data(),
+	};
+
+	try
+	{
+		sDevice = sPhysicalDevice.createDevice(deviceCreateInfo);
+	}
+	catch (const std::exception& exception)
+	{
+		AkLogError("Failed to create vulkan device: {}", exception.what());
+		return false;
+	}
+
+	sGraphicsQueue = sDevice.getQueue(selectedDeviceGraphicsQueueFamilyIndex, 0);
+	sComputeQueue = sDevice.getQueue(selectedDeviceComputeQueueFamilyIndex, 0);
+	sTransferQueue = sDevice.getQueue(selectedDeviceTransferQueueFamilyIndex, 0);
+	return true;
+}
+
+bool AkGfxDevice::CreateMemoryAllocator()
+{
+	VmaAllocatorCreateInfo allocatorInfo = {};
+	allocatorInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+	allocatorInfo.physicalDevice = sPhysicalDevice;
+	allocatorInfo.device = sDevice;
+	allocatorInfo.instance = sInstance;
+
+	VkResult result = VK_SUCCESS;
+	if ((result = vmaCreateAllocator(&allocatorInfo, &sMemoryAllocator)) != VK_SUCCESS)
+	{
+		AkLogError("Failed to create vulkan memory allocator");
+		return false;
+	}
+
+	return true;
+}

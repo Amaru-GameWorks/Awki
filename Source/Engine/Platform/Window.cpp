@@ -5,12 +5,6 @@
 
 AkWindow::AkWindow(const AkWindowDescriptor& descriptor)
 {
-	if (!SDL_Init(SDL_INIT_VIDEO)) 
-	{
-		AkLogError("Couldn't initialize SDL: {}", SDL_GetError());
-		throw std::exception("AkWindow could not initialize");
-	}
-
 	Uint32 flags = SDL_WINDOW_VULKAN;
 	if (descriptor.flags & AkWindowFlag_FULLSCREEN)			flags |= SDL_WINDOW_FULLSCREEN;
 	if (descriptor.flags & AkWindowFlag_HIDDEN)				flags |= SDL_WINDOW_HIDDEN;
@@ -23,7 +17,7 @@ AkWindow::AkWindow(const AkWindowDescriptor& descriptor)
 	if (descriptor.flags & AkWindowFlag_UTILITY_WINDOW)		flags |= SDL_WINDOW_UTILITY;
 
 	m_WindowHandle = SDL_CreateWindow(descriptor.name.data(), static_cast<int>(descriptor.width), static_cast<int>(descriptor.height), flags);
-	if (m_WindowHandle == nullptr)
+	if (!m_WindowHandle)
 	{
 		AkLogError("Failed to create SDL window: {}", SDL_GetError());
 		throw std::exception("AkWindow could not create a window");

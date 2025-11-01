@@ -2,16 +2,20 @@
 #include "Log.h"
 #include "Platform/Window.h"
 #include "Platform/Events.h"
+#include "RHI/Device/GfxDevice.h"
 
 bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 {
 	if (!AkLog::Initialize())
 		return false;
 
+	AkLogInfo("Awki {} initializing", kEngineVersion);
+
 	if (!AkEvents::Initialize())
 		return false;
 
-	AkLogInfo("Awki {} initializing", kEngineVersion);
+	if (!AkGfxDevice::Initialize())
+		return false;
 	
 	try
 	{
@@ -29,8 +33,9 @@ bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 void Awki::Deinitialize()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
-	m_Window.reset();
+	m_Window = nullptr;
 
+	AkGfxDevice::Deinitialize();
 	AkEvents::Deinitialize();
 	AkLog::Deinitialize();
 }
