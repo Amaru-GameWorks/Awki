@@ -1,8 +1,9 @@
 #include "Engine.h"
 #include "Log.h"
+#include "RHI/Device.h"
+#include "RHI/Swapchain.h"
 #include "Platform/Window.h"
 #include "Platform/Events.h"
-#include "RHI/Device/GfxDevice.h"
 
 bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 {
@@ -14,12 +15,13 @@ bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 	if (!AkEvents::Initialize())
 		return false;
 
-	if (!AkGfxDevice::Initialize())
+	if (!AkDevice::Initialize())
 		return false;
 	
 	try
 	{
 		m_Window = std::make_shared<AkWindow>(descriptor.window);
+		m_Swapchain = std::make_shared<AkSwapchain>(m_Window);
 	}
 	catch (...) 
 	{
@@ -33,9 +35,12 @@ bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 void Awki::Deinitialize()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
+	AkDevice::WaitIdle();
+
+	m_Swapchain = nullptr;
 	m_Window = nullptr;
 
-	AkGfxDevice::Deinitialize();
+	AkDevice::Deinitialize();
 	AkEvents::Deinitialize();
 	AkLog::Deinitialize();
 }
@@ -45,5 +50,11 @@ void Awki::Run()
 	while (!AkEvents::ShouldClose())
 	{
 		AkEvents::PollEvents();
+
+		if (m_Swapchain->Prepare())
+		{
+
+			m_Swapchain->Present();
+		}
 	}
 }

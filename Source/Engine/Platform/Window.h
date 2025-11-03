@@ -65,6 +65,7 @@ public:
 	bool HasInputFocus() const;
 	bool HasMouseFocus() const;
 
+	struct SDL_Window* GetHandle() const;
 	static std::vector<AkDisplayMode> GetAvailableDisplayModes();
 
 private:

@@ -1,11 +1,11 @@
-#include "GfxDevice.h"
+#include "Device.h"
 #include "Core/Log.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
-
-#define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
+
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
@@ -13,6 +13,8 @@
 static vk::Device sDevice = {};
 static vk::Instance sInstance = {};
 static vk::PhysicalDevice sPhysicalDevice = {};
+static vk::DebugUtilsMessengerEXT sDebugMessenger = {};
+
 static VmaAllocator sMemoryAllocator = {};
 
 static vk::Queue sGraphicsQueue = {};
@@ -21,7 +23,31 @@ static vk::Queue sTransferQueue = {};
 
 static constexpr const char* kValidationLayerName = "VK_LAYER_KHRONOS_validation";
 
-bool AkGfxDevice::Initialize()
+static vk::Bool32 VKAPI_PTR ValidationDebugMessages(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity, vk::DebugUtilsMessageTypeFlagsEXT messageTypes, const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+{
+	switch (messageSeverity)
+	{
+		case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
+			AkLogInfo("{}", pCallbackData->pMessage);
+			break;
+
+		case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
+			AkLogTrace("{}", pCallbackData->pMessage);
+			break;
+
+		case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
+			AkLogWarning("{}", pCallbackData->pMessage);
+			break;
+
+		case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
+			AkLogError("{}", pCallbackData->pMessage);
+			break;
+	}
+
+	return false;
+}
+
+bool AkDevice::Initialize()
 {
 	if (!SDL_Init(SDL_INIT_VIDEO))
 	{
@@ -41,57 +67,78 @@ bool AkGfxDevice::Initialize()
 	if (!CreateLogicalDevices())
 		return false;
 
+	if (!InitializeExtensions())
+		return false;
+
 	if (!CreateMemoryAllocator())
 		return false;
 
 	return true;
 }
 
-void AkGfxDevice::Deinitialize()
+void AkDevice::Deinitialize()
 {
 	vmaDestroyAllocator(sMemoryAllocator);
+	sInstance.destroyDebugUtilsMessengerEXT(sDebugMessenger);
 
 	sDevice.destroy();
 	sInstance.destroy();
 }
 
-vk::Device* AkGfxDevice::GetDevice()
+void AkDevice::WaitIdle()
 {
-	return &sDevice;
+	sDevice.waitIdle();
 }
 
-VmaAllocator_T* AkGfxDevice::GetMemoryAllocator()
+const vk::Instance& AkDevice::GetInstance()
+{
+	return sInstance;
+}
+
+const vk::Device& AkDevice::GetDevice()
+{
+	return sDevice;
+}
+
+const vk::PhysicalDevice& AkDevice::GetPhysicalDevice()
+{
+	return sPhysicalDevice;
+}
+
+VmaAllocator_T* AkDevice::GetMemoryAllocator()
 {
 	return sMemoryAllocator;
 }
 
-vk::Queue* AkGfxDevice::GetGraphicsQueue()
+const vk::Queue& AkDevice::GetGraphicsQueue()
 {
-	return &sGraphicsQueue;
+	return sGraphicsQueue;
 }
 
-vk::Queue* AkGfxDevice::GetComputeQueue()
+const vk::Queue& AkDevice::GetComputeQueue()
 {
-	return &sComputeQueue;
+	return sComputeQueue;
 }
 
-vk::Queue* AkGfxDevice::GetTransferQueue()
+const vk::Queue& AkDevice::GetTransferQueue()
 {
-	return &sTransferQueue;
+	return sTransferQueue;
 }
 
-bool AkGfxDevice::SupportsAsyncCompute()
+bool AkDevice::SupportsAsyncCompute()
 {
 	return m_SupportsAsyncCompute;
 }
 
-bool AkGfxDevice::SupportsAsyncTransfer()
+bool AkDevice::SupportsAsyncTransfer()
 {
 	return m_SupportsAsyncTransfer;
 }
 
-bool AkGfxDevice::CreateInstance()
+bool AkDevice::CreateInstance()
 {
+	VULKAN_HPP_DEFAULT_DISPATCHER.init();
+
 	vk::ApplicationInfo applicationInfo =
 	{
 		.apiVersion = VK_API_VERSION_1_1
@@ -126,6 +173,7 @@ bool AkGfxDevice::CreateInstance()
 	try
 	{
 		sInstance = vk::createInstance(instanceCreateInfo);
+		VULKAN_HPP_DEFAULT_DISPATCHER.init(sInstance);
 	}
 	catch (const std::exception& exception)
 	{
@@ -136,7 +184,7 @@ bool AkGfxDevice::CreateInstance()
 	return true;
 }
 
-bool AkGfxDevice::CreateLogicalDevices()
+bool AkDevice::CreateLogicalDevices()
 {
 	const std::vector<vk::PhysicalDevice> physicalDevices = sInstance.enumeratePhysicalDevices();
 
@@ -326,6 +374,7 @@ bool AkGfxDevice::CreateLogicalDevices()
 	try
 	{
 		sDevice = sPhysicalDevice.createDevice(deviceCreateInfo);
+		VULKAN_HPP_DEFAULT_DISPATCHER.init(sDevice);
 	}
 	catch (const std::exception& exception)
 	{
@@ -339,7 +388,29 @@ bool AkGfxDevice::CreateLogicalDevices()
 	return true;
 }
 
-bool AkGfxDevice::CreateMemoryAllocator()
+bool AkDevice::InitializeExtensions()
+{
+	try
+	{
+		vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo =
+		{
+			.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+			.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
+			.pfnUserCallback = ValidationDebugMessages
+		};
+
+		sDebugMessenger = sInstance.createDebugUtilsMessengerEXT(debugMessengerCreateInfo);
+	}
+	catch (const std::exception& exception)
+	{
+		AkLogError("Failed to initialize vulkan validation layers: {}", exception.what());
+		return false;
+	}
+
+	return true;
+}
+
+bool AkDevice::CreateMemoryAllocator()
 {
 	VmaAllocatorCreateInfo allocatorInfo = {};
 	allocatorInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
@@ -347,8 +418,7 @@ bool AkGfxDevice::CreateMemoryAllocator()
 	allocatorInfo.device = sDevice;
 	allocatorInfo.instance = sInstance;
 
-	VkResult result = VK_SUCCESS;
-	if ((result = vmaCreateAllocator(&allocatorInfo, &sMemoryAllocator)) != VK_SUCCESS)
+	if (vmaCreateAllocator(&allocatorInfo, &sMemoryAllocator) != VK_SUCCESS)
 	{
 		AkLogError("Failed to create vulkan memory allocator");
 		return false;

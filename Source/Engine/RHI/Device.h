@@ -1,19 +1,22 @@
 #pragma once
 
-namespace vk { class Device; class Queue; }
+namespace vk { class Instance; class Device; class Queue; class PhysicalDevice; }
 
-class AkGfxDevice
+class AkDevice
 {
 public:
 	static bool Initialize();
 	static void Deinitialize();
+	static void WaitIdle();
 
-	static vk::Device* GetDevice();
+	static const vk::Instance& GetInstance();
+	static const vk::Device& GetDevice();
+	static const vk::PhysicalDevice& GetPhysicalDevice();
 	static struct VmaAllocator_T* GetMemoryAllocator();
 
-	static vk::Queue* GetGraphicsQueue();
-	static vk::Queue* GetComputeQueue();
-	static vk::Queue* GetTransferQueue();
+	static const vk::Queue& GetGraphicsQueue();
+	static const vk::Queue& GetComputeQueue();
+	static const vk::Queue& GetTransferQueue();
 
 	static bool SupportsAsyncCompute();
 	static bool SupportsAsyncTransfer();
@@ -21,6 +24,7 @@ public:
 private:
 	static bool CreateInstance();
 	static bool CreateLogicalDevices();
+	static bool InitializeExtensions();
 	static bool CreateMemoryAllocator();
 
 	static inline bool m_SupportsAsyncCompute = false;

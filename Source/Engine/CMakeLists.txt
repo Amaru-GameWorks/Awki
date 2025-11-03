@@ -27,6 +27,10 @@ target_compile_features(Engine PUBLIC cxx_std_20)
 
 # Set engine preprocessor definitions
 list(APPEND ENGINE_DEFINES
+	FMT_UNICODE=0
+	VULKAN_HPP_NO_CONSTRUCTORS
+	VULKAN_HPP_NO_NODISCARD_WARNINGS
+	VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
 	GLM_FORCE_INTRINSICS
 	GLM_FORCE_DEPTH_ZERO_TO_ONE
 	GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -40,10 +44,6 @@ if(WIN32)
 		NOGDI
 	)
 endif()
-
-list(APPEND ENGINE_DEFINES
-	FMT_UNICODE=0
-)
 
 # Set preprocessor definitions
 target_compile_definitions(Engine PUBLIC ${ENGINE_DEFINES})
