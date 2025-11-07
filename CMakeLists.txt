@@ -7,17 +7,17 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets"
 # Set all targes to this folder by default
 set(CMAKE_FOLDER "_External Dependencies")
 
+# Set the configuration types that we are going to be using
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+
 # Adds the cmake folder that contains extra cmake scripts
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 
 # Find required libraries
-find_package(Vulkan)
+find_package(Vulkan REQUIRED)
 
 # Include ThirdParty projects
 include(BuildExternalProjects)
-
-# Set the configuration types that we are going to be using
-set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # Configure compiler flags
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -50,7 +50,6 @@ include_directories(SYSTEM
 	${Vulkan_INCLUDE_DIR}
 
 	ThirdParty/fmt/include
-	ThirdParty/glm
 	ThirdParty/SDL/include
 )
 

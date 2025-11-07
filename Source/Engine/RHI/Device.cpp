@@ -20,6 +20,10 @@ static VmaAllocator sMemoryAllocator = {};
 static vk::Queue sGraphicsQueue = {};
 static vk::Queue sComputeQueue = {};
 static vk::Queue sTransferQueue = {};
+static uint32_t sGraphicsQueueFamilyIndex = {};
+static uint32_t sComputeQueueFamilyIndex = {};
+static uint32_t sTransferQueueFamilyIndex = {};
+
 
 static constexpr const char* kValidationLayerName = "VK_LAYER_KHRONOS_validation";
 
@@ -123,6 +127,21 @@ const vk::Queue& AkDevice::GetComputeQueue()
 const vk::Queue& AkDevice::GetTransferQueue()
 {
 	return sTransferQueue;
+}
+
+uint32_t AkDevice::GetGraphicsQueueFamilyIndex()
+{
+	return sGraphicsQueueFamilyIndex;
+}
+
+uint32_t AkDevice::GetComputeQueueFamilyIndex()
+{
+	return sComputeQueueFamilyIndex;
+}
+
+uint32_t AkDevice::GetTransferQueueFamilyIndex()
+{
+	return sTransferQueueFamilyIndex;
 }
 
 bool AkDevice::SupportsAsyncCompute()
@@ -382,8 +401,13 @@ bool AkDevice::CreateLogicalDevices()
 		return false;
 	}
 
+	sGraphicsQueueFamilyIndex = selectedDeviceGraphicsQueueFamilyIndex;
 	sGraphicsQueue = sDevice.getQueue(selectedDeviceGraphicsQueueFamilyIndex, 0);
+
+	sComputeQueueFamilyIndex = selectedDeviceComputeQueueFamilyIndex;
 	sComputeQueue = sDevice.getQueue(selectedDeviceComputeQueueFamilyIndex, 0);
+
+	sTransferQueueFamilyIndex = selectedDeviceTransferQueueFamilyIndex;
 	sTransferQueue = sDevice.getQueue(selectedDeviceTransferQueueFamilyIndex, 0);
 	return true;
 }

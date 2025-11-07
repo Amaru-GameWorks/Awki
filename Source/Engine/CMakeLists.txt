@@ -4,17 +4,8 @@ project(Awki)
 # Gather Engine project source files
 file(GLOB_RECURSE ENGINE_SOURCE CONFIGURE_DEPENDS "*.cpp" "*.h")
 
-# Add VS Natvis files
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	set(NATVIS_FILES
-		../../ThirdParty/glm/util/glm.natvis
-	)
-else()
-	set(NATVIS_FILES)
-endif()
-
 # Add the Engine library
-add_library(Engine ${ENGINE_SOURCE} ${NATVIS_FILES})
+add_library(Engine ${ENGINE_SOURCE})
 
 # Source grouping
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCE})

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 namespace vk { class Instance; class Device; class Queue; class PhysicalDevice; }
 
@@ -17,6 +18,10 @@ public:
 	static const vk::Queue& GetGraphicsQueue();
 	static const vk::Queue& GetComputeQueue();
 	static const vk::Queue& GetTransferQueue();
+
+	static uint32_t GetGraphicsQueueFamilyIndex();
+	static uint32_t GetComputeQueueFamilyIndex();
+	static uint32_t GetTransferQueueFamilyIndex();
 
 	static bool SupportsAsyncCompute();
 	static bool SupportsAsyncTransfer();
