@@ -108,13 +108,68 @@ void AkSwapchain::Present()
 	static constexpr vk::PipelineStageFlags kDefaultWaitStage = vk::PipelineStageFlagBits::eBottomOfPipe;
 	const vk::Queue& graphicsQueue = AkDevice::GetGraphicsQueue();
 
+	//Testing it Works
+	const vk::Device& device = AkDevice::GetDevice();
+		
+	static const vk::CommandPoolCreateInfo poolCreateInfo =
+	{
+		.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+		.queueFamilyIndex = AkDevice::GetGraphicsQueueFamilyIndex()
+	};
+	static vk::CommandPool commandPool = device.createCommandPool(poolCreateInfo);
+
+	static const vk::CommandBufferAllocateInfo bufferAllocateInfo =
+	{
+		.commandPool = commandPool,
+		.level = vk::CommandBufferLevel::ePrimary,
+		.commandBufferCount = 3
+	};
+	static std::vector<vk::CommandBuffer> commandBuffers = device.allocateCommandBuffers(bufferAllocateInfo);
+
+	static const vk::CommandBufferBeginInfo commandBufferBeginInfo =
+	{
+		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+	};
+	commandBuffers[m_CurrentFrameIndex].begin(commandBufferBeginInfo);
+	
+	vk::ImageSubresourceRange subResourceRange =
+	{
+		.aspectMask = vk::ImageAspectFlagBits::eColor,
+		.levelCount = 1,
+		.layerCount = 1,
+	};
+
+	vk::ImageMemoryBarrier imageMemoryBarrier = 
+	{
+		.srcAccessMask = vk::AccessFlagBits::eNone,
+		.dstAccessMask = vk::AccessFlagBits::eMemoryRead,
+		.oldLayout = vk::ImageLayout::eUndefined,
+		.newLayout = vk::ImageLayout::eTransferDstOptimal,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = m_Storage->backBufferImages[m_CurrentBackBufferIndex],
+		.subresourceRange = subResourceRange
+	};
+
+	commandBuffers[m_CurrentFrameIndex].pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+	std::array<float, 4> color = { static_cast<float>(std::rand() % 255) / 255.f, 0.f, 0.f, 1.f };
+	vk::ClearColorValue clearColor = { color };
+	commandBuffers[m_CurrentFrameIndex].clearColorImage(m_Storage->backBufferImages[m_CurrentBackBufferIndex], vk::ImageLayout::eTransferDstOptimal, clearColor, subResourceRange);
+	
+	imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+	imageMemoryBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+	commandBuffers[m_CurrentFrameIndex].pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+	commandBuffers[m_CurrentFrameIndex].end();
+
 	const vk::SubmitInfo submitInfo =
 	{
 		.waitSemaphoreCount = 1,
 		.pWaitSemaphores = &m_Storage->imageAcquireSemaphores[m_CurrentFrameIndex],
 		.pWaitDstStageMask = &kDefaultWaitStage,
-		.commandBufferCount = 0,
-		.pCommandBuffers = nullptr,
+		.commandBufferCount = 1,
+		.pCommandBuffers = &commandBuffers[m_CurrentFrameIndex],
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &m_Storage->finishedRenderingSemaphores[m_CurrentFrameIndex],
 	};
@@ -238,7 +293,7 @@ bool AkSwapchain::CreateSwapchain()
 		.imageColorSpace = m_Storage->presentationSurfaceFormat.colorSpace,
 		.imageExtent = { surfaceCapabilities.maxImageExtent.width, surfaceCapabilities.maxImageExtent.height },
 		.imageArrayLayers = 1,
-		.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+		.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
 		.presentMode = m_Storage->presentationMode,
 		.oldSwapchain = m_Storage->swapchain
 	};
