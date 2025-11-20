@@ -9,7 +9,7 @@
 #define AkLogTrace(format, ...)		{ AkLog::AddLogEntry(LogLevel::TRACE, std::source_location::current(), format , ##__VA_ARGS__); }
 #define AkLogWarning(format, ...)	{ AkLog::AddLogEntry(LogLevel::WARNING, std::source_location::current(), format , ##__VA_ARGS__); }
 #define AkLogError(format, ...)		{ AkLog::AddLogEntry(LogLevel::ERROR, std::source_location::current(), format , ##__VA_ARGS__); }
-#define AkLogCritical(format, ...)	{ AkLog::AddLogEntry(LogLevel::CRITICAL, std::source_location::current(), format , ##__VA_ARGS__); DEBUG_BREAK(); }
+#define AkLogCritical(format, ...)	{ AkLog::AddLogEntry(LogLevel::CRITICAL, std::source_location::current(), format , ##__VA_ARGS__); DEBUG_BREAK(); std::exit(1); }
 
 enum class LogLevel
 {

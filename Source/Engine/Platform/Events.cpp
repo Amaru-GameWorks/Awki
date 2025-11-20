@@ -2,7 +2,6 @@
 #include "Core/Log.h"
 
 #include <SDL3/SDL.h>
-
 #include <array>
 
 static constexpr std::array kKeyCodeLookupTable =

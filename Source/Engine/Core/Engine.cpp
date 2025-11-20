@@ -4,6 +4,7 @@
 #include "RHI/Swapchain.h"
 #include "Platform/Window.h"
 #include "Platform/Events.h"
+#include "RHI/CommandBuffer/CommandBufferAllocator.h"
 
 bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 {
@@ -16,6 +17,9 @@ bool Awki::Initialize(const AkInstanceDescriptor& descriptor)
 		return false;
 
 	if (!AkDevice::Initialize())
+		return false;
+
+	if (!AkCommandBufferAllocator::Initialize())
 		return false;
 	
 	try
@@ -40,6 +44,7 @@ void Awki::Deinitialize()
 	m_Swapchain = nullptr;
 	m_Window = nullptr;
 
+	AkCommandBufferAllocator::Deinitialize();
 	AkDevice::Deinitialize();
 	AkEvents::Deinitialize();
 	AkLog::Deinitialize();

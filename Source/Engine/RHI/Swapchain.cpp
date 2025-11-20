@@ -1,11 +1,25 @@
 #include "Swapchain.h"
 #include "Core/Log.h"
-#include "RHI/Device.h"
 #include "Platform/Window.h"
+#include "RHI/Device.h"
+#include "RHI/Texture/Texture.h"
 
 #include <glm/vec2.hpp>
 #include <vulkan/vulkan.hpp>
 #include <SDL3/SDL_vulkan.h>
+
+AkPixelFormat GetAkPixelFormat(const vk::Format format)
+{
+	switch (format)
+	{
+		case vk::Format::eR8G8B8A8Unorm:			return AkPixelFormat::RGBA8_UNORM;
+		case vk::Format::eR8G8B8A8Srgb:				return AkPixelFormat::RGBA8_SRGB;
+		case vk::Format::eA2B10G10R10UnormPack32:	return AkPixelFormat::R10G10B10A2_UNORM;
+
+		default:
+			AkLogCritical("Vulkan format not registered on this function");
+	}
+}
 
 struct AkSwapchainStorage
 {
@@ -13,7 +27,6 @@ struct AkSwapchainStorage
 	vk::PresentModeKHR presentationMode = vk::PresentModeKHR::eMailbox;
 
 	std::vector<vk::Image> backBufferImages;
-	std::vector<vk::ImageView> backBufferImageViews;
 
 	vk::SurfaceKHR presentationSurface = {};
 	vk::SurfaceFormatKHR presentationSurfaceFormat = {};
@@ -39,7 +52,7 @@ AkSwapchain::AkSwapchain(const std::shared_ptr<AkWindow>& window)
 	if (!CreateSwapchain())
 		throw std::exception("Failed to create AkSwapchain");
 
-	if (!CreateBackbufferViews())
+	if (!CreateBackBuffersRenderTargets())
 		throw std::exception("Failed to create AkSwapchain");
 
 	if (!CreateSynchronizationPrimitives())
@@ -48,10 +61,11 @@ AkSwapchain::AkSwapchain(const std::shared_ptr<AkWindow>& window)
 
 AkSwapchain::~AkSwapchain()
 {
+	m_BackBufferTextures.clear();
+
 	const vk::Device& device = AkDevice::GetDevice();
 	for (uint32_t i = 0; i < m_Storage->backBuffersCount; ++i)
 	{
-		device.destroyImageView(m_Storage->backBufferImageViews[i]);
 		device.destroyFence(m_Storage->fences[i]);
 		device.destroySemaphore(m_Storage->imageAcquireSemaphores[i]);
 		device.destroySemaphore(m_Storage->finishedRenderingSemaphores[i]);
@@ -79,7 +93,7 @@ bool AkSwapchain::Prepare()
 		if (!CreateSwapchain())
 			return false;
 
-		if (!CreateBackbufferViews())
+		if (!CreateBackBuffersRenderTargets())
 			return false;
 
 		m_NeedsRecreation = false;
@@ -103,65 +117,22 @@ bool AkSwapchain::Prepare()
 	return true;
 }
 
+#include "CommandBuffer/CommandBufferAllocator.h"
 void AkSwapchain::Present()
 {
 	static constexpr vk::PipelineStageFlags kDefaultWaitStage = vk::PipelineStageFlagBits::eBottomOfPipe;
 	const vk::Queue& graphicsQueue = AkDevice::GetGraphicsQueue();
 
-	//Testing it Works
-	const vk::Device& device = AkDevice::GetDevice();
-		
-	static const vk::CommandPoolCreateInfo poolCreateInfo =
-	{
-		.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-		.queueFamilyIndex = AkDevice::GetGraphicsQueueFamilyIndex()
-	};
-	static vk::CommandPool commandPool = device.createCommandPool(poolCreateInfo);
+	// -- Testing it Works
+	static const std::vector<AkCommandBuffer*> commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, 3);
+	AkTexture* currentBackBufferTexture = m_BackBufferTextures[m_CurrentBackBufferIndex].get();
 
-	static const vk::CommandBufferAllocateInfo bufferAllocateInfo =
-	{
-		.commandPool = commandPool,
-		.level = vk::CommandBufferLevel::ePrimary,
-		.commandBufferCount = 3
-	};
-	static std::vector<vk::CommandBuffer> commandBuffers = device.allocateCommandBuffers(bufferAllocateInfo);
-
-	static const vk::CommandBufferBeginInfo commandBufferBeginInfo =
-	{
-		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
-	};
-	commandBuffers[m_CurrentFrameIndex].begin(commandBufferBeginInfo);
-	
-	vk::ImageSubresourceRange subResourceRange =
-	{
-		.aspectMask = vk::ImageAspectFlagBits::eColor,
-		.levelCount = 1,
-		.layerCount = 1,
-	};
-
-	vk::ImageMemoryBarrier imageMemoryBarrier = 
-	{
-		.srcAccessMask = vk::AccessFlagBits::eNone,
-		.dstAccessMask = vk::AccessFlagBits::eMemoryRead,
-		.oldLayout = vk::ImageLayout::eUndefined,
-		.newLayout = vk::ImageLayout::eTransferDstOptimal,
-		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.image = m_Storage->backBufferImages[m_CurrentBackBufferIndex],
-		.subresourceRange = subResourceRange
-	};
-
-	commandBuffers[m_CurrentFrameIndex].pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-
-	std::array<float, 4> color = { static_cast<float>(std::rand() % 255) / 255.f, 0.f, 0.f, 1.f };
-	vk::ClearColorValue clearColor = { color };
-	commandBuffers[m_CurrentFrameIndex].clearColorImage(m_Storage->backBufferImages[m_CurrentBackBufferIndex], vk::ImageLayout::eTransferDstOptimal, clearColor, subResourceRange);
-	
-	imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-	imageMemoryBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-	commandBuffers[m_CurrentFrameIndex].pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-
-	commandBuffers[m_CurrentFrameIndex].end();
+	commandBuffers[m_CurrentFrameIndex]->Begin();
+	commandBuffers[m_CurrentFrameIndex]->TransitionTexture(currentBackBufferTexture, AkResourceState::UNDEFINED, AkResourceState::COPY_DESTINATION);
+	commandBuffers[m_CurrentFrameIndex]->ClearColor(currentBackBufferTexture, AkResourceState::COPY_DESTINATION, glm::vec4(0.1f, 0.2f, 0.3f, 1.f));
+	commandBuffers[m_CurrentFrameIndex]->TransitionTexture(currentBackBufferTexture, AkResourceState::COPY_DESTINATION, AkResourceState::PRESENT);
+	commandBuffers[m_CurrentFrameIndex]->End();
+	// -- Testing it Works
 
 	const vk::SubmitInfo submitInfo =
 	{
@@ -169,7 +140,7 @@ void AkSwapchain::Present()
 		.pWaitSemaphores = &m_Storage->imageAcquireSemaphores[m_CurrentFrameIndex],
 		.pWaitDstStageMask = &kDefaultWaitStage,
 		.commandBufferCount = 1,
-		.pCommandBuffers = &commandBuffers[m_CurrentFrameIndex],
+		.pCommandBuffers = &commandBuffers[m_CurrentFrameIndex]->GetBuffer(),
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &m_Storage->finishedRenderingSemaphores[m_CurrentFrameIndex],
 	};
@@ -274,7 +245,6 @@ void AkSwapchain::InitializePersistentData()
 
 	//Resize persistent arrays
 	m_Storage->fences.resize(m_Storage->backBuffersCount);
-	m_Storage->backBufferImageViews.resize(m_Storage->backBuffersCount);
 	m_Storage->imageAcquireSemaphores.resize(m_Storage->backBuffersCount);
 	m_Storage->finishedRenderingSemaphores.resize(m_Storage->backBuffersCount);
 }
@@ -317,33 +287,22 @@ bool AkSwapchain::CreateSwapchain()
 	return true;
 }
 
-bool AkSwapchain::CreateBackbufferViews()
+bool AkSwapchain::CreateBackBuffersRenderTargets()
 {
-	const vk::Device& device = AkDevice::GetDevice();
-	for (vk::ImageView& view : m_Storage->backBufferImageViews)
-		device.destroyImageView(view);
-
-	vk::ImageViewCreateInfo imageViewCreateInfo =
+	m_BackBufferTextures.clear();
+	const AkTextureDescriptor descriptor =
 	{
-		.viewType = vk::ImageViewType::e2D,
-		.format = m_Storage->presentationSurfaceFormat.format,
-		.components = { vk::ComponentSwizzle::eR, vk::ComponentSwizzle::eG, vk::ComponentSwizzle::eB, vk::ComponentSwizzle::eA },
-		.subresourceRange =
-		{
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1
-		}
+		.width = m_Storage->swapchainExtents.x,
+		.height = m_Storage->swapchainExtents.y,
+		.flags = AkTextureFlags_DEFAULT_RT,
+		.format = GetAkPixelFormat(m_Storage->presentationSurfaceFormat.format)
 	};
 
 	for (uint32_t i = 0; i < m_Storage->backBuffersCount; ++i)
 	{
 		try
 		{
-			imageViewCreateInfo.image = m_Storage->backBufferImages[i];
-			m_Storage->backBufferImageViews[i] = device.createImageView(imageViewCreateInfo);
+			m_BackBufferTextures.push_back(std::make_unique<AkTexture>(descriptor, m_Storage->backBufferImages[i]));
 		}
 		catch (const std::exception& exception)
 		{
@@ -401,7 +360,7 @@ bool AkSwapchain::AcquireNextImageIndex()
 			if (!CreateSwapchain())
 				return false;
 
-			if (!CreateBackbufferViews())
+			if (!CreateBackBuffersRenderTargets())
 				return false;
 
 			return AcquireNextImageIndex();

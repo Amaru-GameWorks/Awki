@@ -15,7 +15,7 @@ enum AkWindowFlagBits : uint16_t
 	AkWindowFlag_ALWAYS_ON_TOP		= 1 << 7,
 	AkWindowFlag_UTILITY_WINDOW		= 1 << 8
 };
-using AkWindowFlags = std::underlying_type<AkWindowFlagBits>::type;
+using AkWindowFlags = std::underlying_type_t<AkWindowFlagBits>;
 
 struct AkWindowDescriptor
 {

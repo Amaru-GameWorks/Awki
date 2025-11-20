@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <vector>
 
 class AkSwapchain
 {
@@ -17,11 +18,12 @@ private:
 
 	std::shared_ptr<class AkWindow> m_Window = nullptr;
 	std::unique_ptr<struct AkSwapchainStorage> m_Storage = nullptr;
+	std::vector<std::unique_ptr<class AkTexture>> m_BackBufferTextures = {};
 	
 	bool CreatePresentationSurface();
 	void InitializePersistentData();
 	bool CreateSwapchain();
-	bool CreateBackbufferViews();
+	bool CreateBackBuffersRenderTargets();
 	bool CreateSynchronizationPrimitives();
 
 	bool AcquireNextImageIndex();

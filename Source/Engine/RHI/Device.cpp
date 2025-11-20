@@ -13,8 +13,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 static vk::Device sDevice = {};
 static vk::Instance sInstance = {};
 static vk::PhysicalDevice sPhysicalDevice = {};
-static vk::DebugUtilsMessengerEXT sDebugMessenger = {};
-
 static VmaAllocator sMemoryAllocator = {};
 
 static vk::Queue sGraphicsQueue = {};
@@ -24,9 +22,9 @@ static uint32_t sGraphicsQueueFamilyIndex = {};
 static uint32_t sComputeQueueFamilyIndex = {};
 static uint32_t sTransferQueueFamilyIndex = {};
 
-
+#if DEBUG
+static vk::DebugUtilsMessengerEXT sDebugMessenger = {};
 static constexpr const char* kValidationLayerName = "VK_LAYER_KHRONOS_validation";
-
 static vk::Bool32 VKAPI_PTR ValidationDebugMessages(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity, vk::DebugUtilsMessageTypeFlagsEXT messageTypes, const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	switch (messageSeverity)
@@ -50,6 +48,7 @@ static vk::Bool32 VKAPI_PTR ValidationDebugMessages(vk::DebugUtilsMessageSeverit
 
 	return false;
 }
+#endif
 
 bool AkDevice::Initialize()
 {
@@ -83,7 +82,9 @@ bool AkDevice::Initialize()
 void AkDevice::Deinitialize()
 {
 	vmaDestroyAllocator(sMemoryAllocator);
+#if DEBUG
 	sInstance.destroyDebugUtilsMessengerEXT(sDebugMessenger);
+#endif
 
 	sDevice.destroy();
 	sInstance.destroy();
@@ -177,6 +178,7 @@ bool AkDevice::CreateInstance()
 	for (Uint32 i = 0; i < extensionsCount; ++i)
 		extensions.push_back(sdlNeededExtensions[i]);
 
+#if DEBUG
 	std::vector<vk::LayerProperties> layerProperties = vk::enumerateInstanceLayerProperties();
 	auto foundValidationLayer = std::find_if(layerProperties.begin(), layerProperties.end(), [](vk::LayerProperties& layer) { return strcmp(kValidationLayerName, layer.layerName) == 0; });
 	if (foundValidationLayer != layerProperties.end())
@@ -185,6 +187,7 @@ bool AkDevice::CreateInstance()
 		instanceCreateInfo.ppEnabledLayerNames = &kValidationLayerName;
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
+#endif
 
 	instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
 	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
@@ -208,7 +211,6 @@ bool AkDevice::CreateLogicalDevices()
 	const std::vector<vk::PhysicalDevice> physicalDevices = sInstance.enumeratePhysicalDevices();
 
 	uint32_t maxDeviceScore = 0;
-	size_t selectedDeviceIndex = 0;
 	uint32_t selectedDeviceGraphicsQueueFamilyIndex = UINT32_MAX;
 	uint32_t selectedDeviceComputeQueueFamilyIndex = UINT32_MAX;
 	uint32_t selectedDeviceTransferQueueFamilyIndex = UINT32_MAX;
@@ -346,11 +348,13 @@ bool AkDevice::CreateLogicalDevices()
 	extensionToEnable.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 	//Optional Extensions
+#if DEBUG
 	if (IsExtensionAvailable(deviceExtensions, VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
 		extensionToEnable.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 
 	if (IsExtensionAvailable(deviceExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
 		extensionToEnable.push_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+#endif
 
 	//Get Device queues
 	std::vector<float> queuePriorities = { 1.0f };
@@ -414,6 +418,7 @@ bool AkDevice::CreateLogicalDevices()
 
 bool AkDevice::InitializeExtensions()
 {
+#if DEBUG
 	try
 	{
 		vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo =
@@ -430,6 +435,7 @@ bool AkDevice::InitializeExtensions()
 		AkLogError("Failed to initialize vulkan validation layers: {}", exception.what());
 		return false;
 	}
+#endif
 
 	return true;
 }
