@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.25)
 project(Awki)
 
 # Put predefined targets into a specific folder
@@ -50,6 +50,7 @@ include_directories(SYSTEM
 	${Vulkan_INCLUDE_DIR}
 
 	ThirdParty/fmt/include
+	ThirdParty/glm
 	ThirdParty/SDL/include
 )
 

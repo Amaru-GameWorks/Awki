@@ -7,7 +7,7 @@
 
 #define AkRaise(message)					{ AkAssertMessageBox::ShowError(message); AkLogCritical(message); }
 #define AkAssert(condition, message)		{ if(!(condition)){ AkAssertMessageBox::ShowError(message); AkLogCritical(message); }}
-#define AkSoftAssert(condition, message)	{ if(!(condition)){ static auto COUNTER_CONCAT(AkSoftAsertUsed) = [](){ AkAssertMessageBox::ShowWarning(message); DEBUG_BREAK(); return 0; }(); AkLogWarning(message); }}
+#define AkSoftAssert(condition, message)	{ if(!(condition)){ [[maybe_unused]] static auto COUNTER_CONCAT(AkSoftAsertUsed) = [](){ AkAssertMessageBox::ShowWarning(message); DEBUG_BREAK(); return 0; }(); AkLogWarning(message); }}
 
 class AkAssertMessageBox
 {

@@ -25,7 +25,7 @@ static uint32_t sTransferQueueFamilyIndex = {};
 #if DEBUG
 static vk::DebugUtilsMessengerEXT sDebugMessenger = {};
 static constexpr const char* kValidationLayerName = "VK_LAYER_KHRONOS_validation";
-static vk::Bool32 VKAPI_PTR ValidationDebugMessages(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity, vk::DebugUtilsMessageTypeFlagsEXT messageTypes, const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+static vk::Bool32 VKAPI_PTR ValidationDebugMessages(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity, vk::DebugUtilsMessageTypeFlagsEXT /*messageTypes*/, const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* /*pUserData*/)
 {
 	switch (messageSeverity)
 	{
@@ -386,13 +386,11 @@ bool AkDevice::CreateLogicalDevices()
 		deviceQueueInfos.push_back(queueCreateInfo);
 	}
 
-	vk::DeviceCreateInfo deviceCreateInfo =
-	{
-		.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueInfos.size()),
-		.pQueueCreateInfos = deviceQueueInfos.data(),
-		.enabledExtensionCount = static_cast<uint32_t>(extensionToEnable.size()),
-		.ppEnabledExtensionNames = extensionToEnable.data(),
-	};
+	vk::DeviceCreateInfo deviceCreateInfo = {};
+	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueInfos.size());
+	deviceCreateInfo.pQueueCreateInfos = deviceQueueInfos.data();
+	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensionToEnable.size());
+	deviceCreateInfo.ppEnabledExtensionNames = extensionToEnable.data();
 
 	try
 	{

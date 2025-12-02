@@ -20,7 +20,7 @@ AkWindow::AkWindow(const AkWindowDescriptor& descriptor)
 	if (!m_WindowHandle)
 	{
 		AkLogError("Failed to create SDL window: {}", SDL_GetError());
-		throw std::exception("AkWindow could not create a window");
+		throw std::runtime_error("AkWindow could not create a window");
 	}
 }
 

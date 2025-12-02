@@ -45,3 +45,7 @@
 
 # Build folder
 /Build
+/build
+
+# ThirdParty folder
+/ThirdParty

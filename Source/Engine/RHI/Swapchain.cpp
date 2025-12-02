@@ -45,18 +45,18 @@ AkSwapchain::AkSwapchain(const std::shared_ptr<AkWindow>& window)
 	m_Storage = std::make_unique<AkSwapchainStorage>();
 
 	if (!CreatePresentationSurface())
-		throw std::exception("Failed to create AkSwapchain");
+		throw std::runtime_error("Failed to create AkSwapchain");
 
 	InitializePersistentData();
 
 	if (!CreateSwapchain())
-		throw std::exception("Failed to create AkSwapchain");
+		throw std::runtime_error("Failed to create AkSwapchain");
 
 	if (!CreateBackBuffersRenderTargets())
-		throw std::exception("Failed to create AkSwapchain");
+		throw std::runtime_error("Failed to create AkSwapchain");
 
 	if (!CreateSynchronizationPrimitives())
-		throw std::exception("Failed to create AkSwapchain");
+		throw std::runtime_error("Failed to create AkSwapchain");
 }
 
 AkSwapchain::~AkSwapchain()
@@ -168,6 +168,7 @@ void AkSwapchain::Present()
 	{
 		switch (graphicsQueue.presentKHR(presentInfo))
 		{
+			default:
 			case vk::Result::eSuccess:
 				break;
 			case vk::Result::eSuboptimalKHR:
