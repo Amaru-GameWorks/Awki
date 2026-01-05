@@ -39,8 +39,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE")
 # Gather Game project source files
 file(GLOB_RECURSE GAME_SOURCE CONFIGURE_DEPENDS "Source/Game/*.cpp" "Source/Game/*.h")
 
+# Add Engine library
+add_subdirectory(Source/Engine)
+
 # Create Game executable
 add_executable(Game ${GAME_SOURCE})
+
+# Set Game dependencies
+add_dependencies(Game Engine)
 
 # Remove the Game target from the default folder
 set_target_properties(Game PROPERTIES FOLDER "")
@@ -50,6 +56,9 @@ target_compile_features(Game PUBLIC cxx_std_23)
 
 # Include directories specific to the Game target
 target_include_directories(Game PRIVATE Source/Game/.)
+
+# Link executable with libraries
+target_link_libraries(Game PUBLIC Engine)
 
 # Enable solution folders
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
