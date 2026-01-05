@@ -45,3 +45,6 @@
 
 # CLion settings
 /.idea
+
+# Log files
+*.log
