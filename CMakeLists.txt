@@ -65,7 +65,7 @@ add_executable(Game ${GAME_SOURCE})
 # Set Game dependencies
 add_dependencies(Game Engine)
 
-# Set preprocessor definitions
+# Set Game preprocessor definitions
 target_compile_definitions(Game PRIVATE ${ENGINE_DEFINES})
 
 # Remove the Game target from the default folder
