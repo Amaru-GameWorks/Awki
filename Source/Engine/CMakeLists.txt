@@ -34,3 +34,6 @@ target_include_directories(
 	Engine PUBLIC
 	.
 )
+
+# Publish Engine preprocessor definitions to parent project
+set(ENGINE_DEFINES ${ENGINE_DEFINES} PARENT_SCOPE)
