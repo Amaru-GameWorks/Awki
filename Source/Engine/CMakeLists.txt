@@ -4,8 +4,17 @@ project(Awki)
 # Gather Engine project source files
 file(GLOB_RECURSE ENGINE_SOURCE CONFIGURE_DEPENDS "*.cpp" "*.h")
 
+# Add VisualStudio Natvis files
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+	set(NATVIS_FILES
+		../../ThirdParty/glm/util/glm.natvis
+	)
+else()
+	set(NATVIS_FILES)
+endif()
+
 # Add the Engine library
-add_library(Engine ${ENGINE_SOURCE})
+add_library(Engine ${ENGINE_SOURCE} ${NATVIS_FILES})
 
 # Source grouping
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCE})
@@ -15,6 +24,13 @@ set_target_properties(Engine PROPERTIES FOLDER "")
 
 # Enable C++23
 target_compile_features(Engine PUBLIC cxx_std_23)
+
+# Set ThirdParty preprocessor definitions
+list(APPEND ENGINE_DEFINES
+	GLM_FORCE_INTRINSICS
+	GLM_FORCE_DEPTH_ZERO_TO_ONE
+	GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+)
 
 #Define engine preprocessor definitions list
 if(WIN32)
@@ -34,3 +50,6 @@ target_include_directories(
 	Engine PUBLIC
 	.
 )
+
+# Publish Engine preprocessor definitions to parent project
+set(ENGINE_DEFINES ${ENGINE_DEFINES} PARENT_SCOPE)

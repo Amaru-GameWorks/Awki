@@ -7,6 +7,12 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets"
 # Set all targes to this folder by default
 set(CMAKE_FOLDER "_External Dependencies")
 
+# Adds the cmake folder that contains extra cmake scripts
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
+
+# Include ThirdParty projects
+include(BuildThirdPartyLibraries)
+
 # Set the configuration types that we are going to be using
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
@@ -39,6 +45,17 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE")
 # Gather Game project source files
 file(GLOB_RECURSE GAME_SOURCE CONFIGURE_DEPENDS "Source/Game/*.cpp" "Source/Game/*.h")
 
+# Set ThirdParty include directories
+include_directories(SYSTEM
+	ThirdParty/glm
+	ThirdParty/SDL/include
+)
+
+# Set ThirdParty link targets
+list(APPEND THIRDPARTY_LINK_TARGETS
+	SDL3-static
+)
+
 # Add Engine library
 add_subdirectory(Source/Engine)
 
@@ -47,6 +64,9 @@ add_executable(Game ${GAME_SOURCE})
 
 # Set Game dependencies
 add_dependencies(Game Engine)
+
+# Set preprocessor definitions
+target_compile_definitions(Game PRIVATE ${ENGINE_DEFINES})
 
 # Remove the Game target from the default folder
 set_target_properties(Game PROPERTIES FOLDER "")
@@ -58,7 +78,7 @@ target_compile_features(Game PUBLIC cxx_std_23)
 target_include_directories(Game PRIVATE Source/Game/.)
 
 # Link executable with libraries
-target_link_libraries(Game PUBLIC Engine)
+target_link_libraries(Game PUBLIC Engine ${THIRDPARTY_LINK_TARGETS})
 
 # Enable solution folders
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

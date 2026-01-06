@@ -1,0 +1,6 @@
+# SDL3
+set(SDL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/SDL")
+set(SDL_TEST_LIBRARY OFF)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
+add_subdirectory(${SDL_DIR} SYSTEM)
