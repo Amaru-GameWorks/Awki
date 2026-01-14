@@ -1,9 +1,7 @@
 #include <Awki.h>
-
 #include <print>
-#include <memory>
 
-int main()
+int main(int /*argc*/, char** /*argv*/)
 {
 	std::shared_ptr<Awki> engine = nullptr;
 
@@ -12,7 +10,13 @@ int main()
 		AkInstanceDescriptor descriptor =
 		{
 			.gameName = "Awesome Game",
-			.gameVersion = {0, 0, 1}
+			.gameVersion = {0, 0, 1},
+			.windowDescriptor = {
+				.name = descriptor.gameName,
+				.flags = AkWindowFlag_RESIZABLE,
+				.width = 1920,
+				.height = 1080
+			}
 		};
 
 		engine = std::make_shared<Awki>(descriptor);

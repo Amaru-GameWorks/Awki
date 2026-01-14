@@ -1,12 +1,15 @@
 #pragma once
 #include "Version.h"
+#include "Platform/Window.h"
 
+#include <memory>
 #include <string_view>
 
 struct AkInstanceDescriptor
 {
 	std::string_view gameName = {};
 	AkVersion gameVersion = {};
+	AkWindowDescriptor windowDescriptor = {};
 };
 
 class Awki
@@ -18,4 +21,7 @@ public:
 	~Awki();
 	
 	void Run();
+
+private:
+	std::shared_ptr<AkWindow> m_Window = nullptr;
 };

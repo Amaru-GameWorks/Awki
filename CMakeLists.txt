@@ -91,4 +91,7 @@ if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	# Set Visual Studio default startup project and debugging startup directory
 	set_target_properties(Game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ..)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Game)
+
+	# Do not spawn a console when running on release
+	set_target_properties(Game PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
 endif()
