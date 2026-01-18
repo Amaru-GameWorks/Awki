@@ -20,7 +20,7 @@ private:
 
 	std::shared_ptr<class AkWindow> m_Window = nullptr;
 	ForwardStorage<struct AkSwapchainStorage, 168> m_Storage;
-	std::vector<std::unique_ptr<class AkTexture>> m_BackBufferTextures = {};
+	std::vector<std::unique_ptr<class AkTexture>> m_BackBufferTextures;
 
 	bool CreatePresentationSurface();
 	void InitializePersistentData();

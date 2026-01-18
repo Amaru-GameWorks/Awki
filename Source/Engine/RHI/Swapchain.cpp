@@ -14,6 +14,8 @@ AkPixelFormat GetAkPixelFormat(const vk::Format format)
 	{
 		case vk::Format::eR8G8B8A8Unorm:			return AkPixelFormat::RGBA8_UNORM;
 		case vk::Format::eR8G8B8A8Srgb:				return AkPixelFormat::RGBA8_SRGB;
+		case vk::Format::eB8G8R8A8Unorm:			return AkPixelFormat::BGRA8_UNORM;
+		case vk::Format::eB8G8R8A8Srgb:				return AkPixelFormat::BGRA8_SRGB;
 		case vk::Format::eA2B10G10R10UnormPack32:	return AkPixelFormat::R10G10B10A2_UNORM;
 
 		default:
@@ -124,7 +126,7 @@ void AkSwapchain::Present()
 	const vk::Queue& graphicsQueue = AkDevice::GetGraphicsQueue();
 
 	// -- Testing it Works
-	static const std::vector<AkCommandBuffer*> commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, 3);
+	static const std::vector<AkCommandBuffer*> commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, m_Storage->backBuffersCount);
 	AkTexture* currentBackBufferTexture = m_BackBufferTextures[m_CurrentBackBufferIndex].get();
 
 	commandBuffers[m_CurrentFrameIndex]->Begin();

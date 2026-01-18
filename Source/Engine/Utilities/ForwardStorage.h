@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 
 template<typename T, size_t Size>
 class ForwardStorage
