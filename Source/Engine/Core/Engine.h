@@ -24,4 +24,5 @@ public:
 
 private:
 	std::shared_ptr<AkWindow> m_Window = nullptr;
+	std::shared_ptr<class AkSwapchain> m_Swapchain = nullptr;
 };

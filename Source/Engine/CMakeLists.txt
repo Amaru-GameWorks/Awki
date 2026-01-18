@@ -30,6 +30,10 @@ list(APPEND ENGINE_DEFINES
 	GLM_FORCE_INTRINSICS
 	GLM_FORCE_DEPTH_ZERO_TO_ONE
 	GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+	
+	VULKAN_HPP_NO_CONSTRUCTORS
+	VULKAN_HPP_NO_NODISCARD_WARNINGS
+	VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
 )
 
 #Define engine preprocessor definitions list
@@ -43,7 +47,7 @@ if(WIN32)
 endif()
 
 # Set preprocessor definitions
-target_compile_definitions(Engine PUBLIC)
+target_compile_definitions(Engine PUBLIC ${ENGINE_DEFINES})
 
 # Publish these include paths to projects depending on 'Engine'
 target_include_directories(

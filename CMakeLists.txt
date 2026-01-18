@@ -10,6 +10,9 @@ set(CMAKE_FOLDER "_External Dependencies")
 # Adds the cmake folder that contains extra cmake scripts
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 
+# Find Vulkan
+find_package(Vulkan REQUIRED)
+
 # Include ThirdParty projects
 include(BuildThirdPartyLibraries)
 
@@ -49,11 +52,13 @@ file(GLOB_RECURSE GAME_SOURCE CONFIGURE_DEPENDS "Source/Game/*.cpp" "Source/Game
 include_directories(SYSTEM
 	ThirdParty/glm
 	ThirdParty/SDL/include
+	${Vulkan_INCLUDE_DIR}
 )
 
 # Set ThirdParty link targets
 list(APPEND THIRDPARTY_LINK_TARGETS
 	SDL3-static
+	Vulkan::Vulkan
 )
 
 # Add Engine library

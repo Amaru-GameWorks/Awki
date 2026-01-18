@@ -184,6 +184,11 @@ bool AkWindow::HasMouseFocus() const
 	return SDL_GetWindowFlags(m_WindowHandle) & SDL_WINDOW_MOUSE_FOCUS;
 }
 
+SDL_Window* AkWindow::GetHandle() const
+{
+	return m_WindowHandle;
+}
+
 std::vector<AkDisplayMode> AkWindow::GetAvailableDisplayModes()
 {
 	int displayModesCount = 0;
