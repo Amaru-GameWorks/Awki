@@ -8,7 +8,7 @@ class ForwardStorage
 public:
 	ForwardStorage()
 	{
-		static_assert(Size >= sizeof(T), "Size mismatch in ForwardDeclaredStrage");
+		static_assert(Size >= sizeof(T), "Size mismatch in ForwardStorage");
 		new (this) T();
 	}
 
