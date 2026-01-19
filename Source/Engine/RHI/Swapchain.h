@@ -11,7 +11,10 @@ public:
 	~AkSwapchain();
 
 	bool Prepare();
-	void Present();
+	void Present(const std::vector<class AkCommandBuffer*>& commandBuffers);
+	class AkRenderTarget* GetCurrentBackBufferRenderTarget() const;
+	uint32_t GetBackBuffersCount() const;
+	uint8_t GetCurrentFrameIndex() const;
 
 private:
 	bool m_NeedsRecreation = false;
@@ -20,7 +23,8 @@ private:
 
 	std::shared_ptr<class AkWindow> m_Window = nullptr;
 	ForwardStorage<struct AkSwapchainStorage, 168> m_Storage;
-	std::vector<std::unique_ptr<class AkTexture>> m_BackBufferTextures;
+	std::vector<std::shared_ptr<class AkTexture>> m_BackBufferTextures;
+	std::vector<std::unique_ptr<class AkRenderTarget>> m_BackBufferRenderTargets;
 
 	bool CreatePresentationSurface();
 	void InitializePersistentData();

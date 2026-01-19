@@ -4,6 +4,7 @@
 #include "RHI/Swapchain.h"
 #include "Platform/Window.h"
 #include "Platform/Events.h"
+#include "RHI/CommandBuffers/CommandBufferAllocator.h"
 
 Awki::Awki(const AkInstanceDescriptor& descriptor)
 {
@@ -27,7 +28,6 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 Awki::~Awki()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
-	AkDevice::WaitIdle();
 
 	m_Swapchain.reset();
 	m_Window.reset();
@@ -39,13 +39,26 @@ Awki::~Awki()
 
 void Awki::Run()
 {
+	m_OnEngineStart.Broadcast();
+	const std::vector<AkCommandBuffer*> commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, m_Swapchain->GetBackBuffersCount());
+
 	while (!AkEvents::ShouldClose())
 	{
 		AkEvents::PollEvents();
 		
 		if (m_Swapchain->Prepare())
 		{
-			m_Swapchain->Present();
+			AkCommandBuffer* currentCommandBuffer = commandBuffers[m_Swapchain->GetCurrentFrameIndex()];
+			AkRenderTarget* currentBackBuffer = m_Swapchain->GetCurrentBackBufferRenderTarget();
+			
+			currentCommandBuffer->Begin();
+			m_OnFrameRender.Broadcast(currentCommandBuffer, currentBackBuffer);
+			currentCommandBuffer->End();
+			
+			m_Swapchain->Present({ currentCommandBuffer });
 		}
 	}
+
+	AkDevice::WaitIdle();
+	m_OnEngineShutdown.Broadcast();
 }

@@ -2,10 +2,11 @@
 #include "Core/Assert.h"
 #include "RHI/Device.h"
 #include "RHI/Textures/Texture.h"
+#include "RHI/Textures/RenderTarget.h"
 
 #include <vulkan/vulkan.hpp>
 
-vk::ImageAspectFlags GetAspectMask(const AkPixelFormat format)
+constexpr vk::ImageAspectFlags GetAspectMask(const AkPixelFormat format)
 {
 	if (IsDepthPixelFormat(format))
 		return vk::ImageAspectFlagBits::eDepth;
@@ -57,72 +58,72 @@ constexpr vk::ImageLayout GetImageLayout(const AkResourceState resourceState)
 	}
 }
 
-constexpr vk::AccessFlags GetAccessMask(const AkResourceState resourceState)
+constexpr vk::AccessFlags2 GetAccessMask(const AkResourceState resourceState)
 {
 	switch (resourceState)
 	{
-		case AkResourceState::UNDEFINED:			return vk::AccessFlagBits::eNone;
-		case AkResourceState::INDEX_BUFFER:			return vk::AccessFlagBits::eIndexRead;
-		case AkResourceState::VERTEX_BUFFER: 		return vk::AccessFlagBits::eVertexAttributeRead;
-		case AkResourceState::CONSTANT_BUFFER:		return vk::AccessFlagBits::eUniformRead;
-		case AkResourceState::RENDER_TARGET:		return vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-		case AkResourceState::UNORDERED_ACCESS:		return vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite;
-		case AkResourceState::DEPTH_READ:			return vk::AccessFlagBits::eDepthStencilAttachmentRead;
-		case AkResourceState::DEPTH_WRITE:			return vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-		case AkResourceState::SHADER_RESOURCE:		return vk::AccessFlagBits::eShaderRead;
-		case AkResourceState::INDIRECT_ARGUMENT:	return vk::AccessFlagBits::eIndirectCommandRead;
-		case AkResourceState::COPY_DESTINATION:		return vk::AccessFlagBits::eTransferWrite;
-		case AkResourceState::COPY_SOURCE:			return vk::AccessFlagBits::eTransferRead;
-		case AkResourceState::PRESENT:				return vk::AccessFlagBits::eMemoryRead;
+		case AkResourceState::UNDEFINED:			return vk::AccessFlagBits2::eNone;
+		case AkResourceState::INDEX_BUFFER:			return vk::AccessFlagBits2::eIndexRead;
+		case AkResourceState::VERTEX_BUFFER: 		return vk::AccessFlagBits2::eVertexAttributeRead;
+		case AkResourceState::CONSTANT_BUFFER:		return vk::AccessFlagBits2::eUniformRead;
+		case AkResourceState::RENDER_TARGET:		return vk::AccessFlagBits2::eColorAttachmentRead | vk::AccessFlagBits2::eColorAttachmentWrite;
+		case AkResourceState::UNORDERED_ACCESS:		return vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eShaderWrite;
+		case AkResourceState::DEPTH_READ:			return vk::AccessFlagBits2::eDepthStencilAttachmentRead;
+		case AkResourceState::DEPTH_WRITE:			return vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+		case AkResourceState::SHADER_RESOURCE:		return vk::AccessFlagBits2::eShaderRead;
+		case AkResourceState::INDIRECT_ARGUMENT:	return vk::AccessFlagBits2::eIndirectCommandRead;
+		case AkResourceState::COPY_DESTINATION:		return vk::AccessFlagBits2::eTransferWrite;
+		case AkResourceState::COPY_SOURCE:			return vk::AccessFlagBits2::eTransferRead;
+		case AkResourceState::PRESENT:				return vk::AccessFlagBits2::eMemoryRead;
 
 		default:
 			AkLogCritical("Resource state not registered in this function");
-			return vk::AccessFlagBits::eNone;
+			return vk::AccessFlagBits2::eNone;
 	}
 }
 
-constexpr vk::PipelineStageFlags GetPipelineStageFlags(const AkResourceState resourceState)
+constexpr vk::PipelineStageFlags2 GetPipelineStageFlags(const AkResourceState resourceState)
 {
 	switch (resourceState)
 	{
 		case AkResourceState::UNDEFINED:
-			return vk::PipelineStageFlagBits::eTopOfPipe;
+			return vk::PipelineStageFlagBits2::eTopOfPipe;
 
 		case AkResourceState::INDEX_BUFFER:
 		case AkResourceState::VERTEX_BUFFER:
-			return vk::PipelineStageFlagBits::eVertexInput;
+			return vk::PipelineStageFlagBits2::eVertexInput;
 
 		case AkResourceState::SHADER_RESOURCE:
 		case AkResourceState::CONSTANT_BUFFER:
 		case AkResourceState::UNORDERED_ACCESS:
-			return	vk::PipelineStageFlagBits::eVertexShader |
-				vk::PipelineStageFlagBits::eFragmentShader |
-				vk::PipelineStageFlagBits::eGeometryShader |
-				vk::PipelineStageFlagBits::eComputeShader |
-				vk::PipelineStageFlagBits::eTessellationControlShader |
-				vk::PipelineStageFlagBits::eTessellationEvaluationShader;
+			return	vk::PipelineStageFlagBits2::eVertexShader |
+				vk::PipelineStageFlagBits2::eFragmentShader |
+				vk::PipelineStageFlagBits2::eGeometryShader |
+				vk::PipelineStageFlagBits2::eComputeShader |
+				vk::PipelineStageFlagBits2::eTessellationControlShader |
+				vk::PipelineStageFlagBits2::eTessellationEvaluationShader;
 
 		case AkResourceState::RENDER_TARGET:
-			return vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			return vk::PipelineStageFlagBits2::eColorAttachmentOutput;
 
 		case AkResourceState::DEPTH_READ:
 		case AkResourceState::DEPTH_WRITE:
-			return	vk::PipelineStageFlagBits::eEarlyFragmentTests |
-				vk::PipelineStageFlagBits::eLateFragmentTests;
+			return	vk::PipelineStageFlagBits2::eEarlyFragmentTests |
+				vk::PipelineStageFlagBits2::eLateFragmentTests;
 
 		case AkResourceState::INDIRECT_ARGUMENT:
-			return vk::PipelineStageFlagBits::eDrawIndirect;
+			return vk::PipelineStageFlagBits2::eDrawIndirect;
 
 		case AkResourceState::COPY_SOURCE:
 		case AkResourceState::COPY_DESTINATION:
-			return vk::PipelineStageFlagBits::eTransfer;
+			return vk::PipelineStageFlagBits2::eTransfer;
 
 		case AkResourceState::PRESENT:
-			return vk::PipelineStageFlagBits::eBottomOfPipe;
+			return vk::PipelineStageFlagBits2::eBottomOfPipe;
 
 		default:
 			AkLogCritical("Resource state not registered in this function");
-			return vk::PipelineStageFlagBits::eNone;
+			return vk::PipelineStageFlagBits2::eNone;
 	}
 }
 
@@ -161,31 +162,64 @@ void AkCommandBuffer::End()
 	m_Storage->commandBuffer.end();
 }
 
+void AkCommandBuffer::BeginRendering(AkRenderTarget* renderTarget)
+{
+	const AkTextureDescriptor& descriptor = renderTarget->GetValidTextureDescriptor();
+	const std::vector<vk::RenderingAttachmentInfo> colorAttachments = renderTarget->GetColorAttachments();
+	const std::optional<vk::RenderingAttachmentInfo> depthAttachment = renderTarget->GetDepthStencilAttachment();
+
+	vk::RenderingInfo renderingInfo = 
+	{
+		.renderArea = 
+		{
+			.extent = 
+			{
+				.width = descriptor.width, 
+				.height = descriptor.height 
+			}
+		},
+		.layerCount = descriptor.depth,
+		.colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size()),
+		.pColorAttachments = renderingInfo.colorAttachmentCount ? colorAttachments.data() : nullptr,
+		.pDepthAttachment = depthAttachment.has_value() ? &depthAttachment.value() : nullptr
+	};
+
+	m_Storage->commandBuffer.beginRendering(renderingInfo);
+}
+
+void AkCommandBuffer::EndRendering()
+{
+	m_Storage->commandBuffer.endRendering();
+}
+
 void AkCommandBuffer::TransitionTexture(AkTexture* texture, const AkResourceState sourceState, const AkResourceState destinationState)
 {
 	const AkTextureDescriptor& descriptor = texture->GetDescriptor();
-	const vk::ImageSubresourceRange subResourceRange =
-	{
-		.aspectMask = GetAspectMask(descriptor.format),
-		.levelCount = descriptor.mips,
-		.layerCount = descriptor.slices,
-	};
 
-	const vk::ImageMemoryBarrier imageMemoryBarrier =
+	const vk::ImageMemoryBarrier2 imageMemoryBarrier =
 	{
+		.srcStageMask = GetPipelineStageFlags(sourceState),
 		.srcAccessMask = GetAccessMask(sourceState),
+		.dstStageMask = GetPipelineStageFlags(destinationState),
 		.dstAccessMask = GetAccessMask(destinationState),
 		.oldLayout = GetImageLayout(sourceState),
 		.newLayout = GetImageLayout(destinationState),
-		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.image = texture->GetImage(),
-		.subresourceRange = subResourceRange
+		.subresourceRange =
+		{
+			.aspectMask = GetAspectMask(descriptor.format),
+			.levelCount = descriptor.mips,
+			.layerCount = descriptor.slices
+		}
 	};
 
-	const vk::PipelineStageFlags sourceStage = GetPipelineStageFlags(sourceState);
-	const vk::PipelineStageFlags destinationStage = GetPipelineStageFlags(destinationState);
-	m_Storage->commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+	const vk::DependencyInfo barrierDependencyInfo =
+	{
+		.imageMemoryBarrierCount = 1,
+		.pImageMemoryBarriers = &imageMemoryBarrier
+	};
+
+	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
 }
 
 void AkCommandBuffer::ClearColor(AkTexture* texture, const AkResourceState sourceState, const glm::vec4& color)
@@ -201,7 +235,7 @@ void AkCommandBuffer::ClearColor(AkTexture* texture, const AkResourceState sourc
 	};
 
 	const vk::ImageLayout currentLayout = GetImageLayout(sourceState);
-	const vk::ClearColorValue clearColor = { {{ color.x, color.y, color.z, color.w}} };
+	const vk::ClearColorValue clearColor = { color.x, color.y, color.z, color.w };
 	m_Storage->commandBuffer.clearColorImage(texture->GetImage(), currentLayout, clearColor, subResourceRange);
 }
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "RHI/PipelineStates.h"
+#include "RHI/ResourceStates.h"
 #include "Utilities/ForwardStorage.h"
 
 #include <glm/vec4.hpp>
@@ -20,6 +20,9 @@ public:
 
 	void Begin();
 	void End();
+
+	void BeginRendering(class AkRenderTarget* renderTarget);
+	void EndRendering();
 
 	void TransitionTexture(class AkTexture* texture, const AkResourceState sourceState, const AkResourceState destinationState);
 	void ClearColor(class AkTexture* texture, const AkResourceState sourceState, const glm::vec4& color);

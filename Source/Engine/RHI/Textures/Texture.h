@@ -4,7 +4,8 @@
 
 namespace vk 
 { 
-	class Image; 
+	class Image;
+	class ImageView;
 }
 
 enum AkTextureFlagBits
@@ -65,10 +66,14 @@ public:
 	AkTexture(const AkTextureDescriptor& descriptor, const vk::Image& image);
 	~AkTexture();
 
-	const AkTextureDescriptor& GetDescriptor() const { return m_Descriptor; }
 	const vk::Image& GetImage();
+	const vk::ImageView& GetImageView(uint32_t mip, uint32_t slice);
+	const AkTextureDescriptor& GetDescriptor() const { return m_Descriptor; }
 
 private:
+	bool m_FromNative = false;
 	AkTextureDescriptor m_Descriptor;
-	ForwardStorage<struct AkTextureStorage, 8> m_Storage;
+	ForwardStorage<struct AkTextureStorage, 40> m_Storage;
+
+	void CreateImageViews();
 };

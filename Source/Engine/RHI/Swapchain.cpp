@@ -3,6 +3,8 @@
 #include "Platform/Window.h"
 #include "RHI/Device.h"
 #include "RHI/Textures/Texture.h"
+#include "RHI/Textures/RenderTarget.h"
+#include "RHI/CommandBuffers/CommandBuffer.h"
 
 #include <glm/vec2.hpp>
 #include <vulkan/vulkan.hpp>
@@ -64,6 +66,7 @@ AkSwapchain::AkSwapchain(const std::shared_ptr<AkWindow>& window)
 AkSwapchain::~AkSwapchain()
 {
 	m_BackBufferTextures.clear();
+	m_BackBufferRenderTargets.clear();
 
 	const vk::Device& device = AkDevice::GetDevice();
 	for (uint32_t i = 0; i < m_Storage->backBuffersCount; ++i)
@@ -119,30 +122,24 @@ bool AkSwapchain::Prepare()
 	return true;
 }
 
-#include "CommandBuffers/CommandBufferAllocator.h"
-void AkSwapchain::Present()
+void AkSwapchain::Present(const std::vector<AkCommandBuffer*>& commandBuffers)
 {
 	static constexpr vk::PipelineStageFlags kDefaultWaitStage = vk::PipelineStageFlagBits::eBottomOfPipe;
 	const vk::Queue& graphicsQueue = AkDevice::GetGraphicsQueue();
 
-	// -- Testing it Works
-	static const std::vector<AkCommandBuffer*> commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, m_Storage->backBuffersCount);
-	AkTexture* currentBackBufferTexture = m_BackBufferTextures[m_CurrentBackBufferIndex].get();
+	std::vector<vk::CommandBuffer> nativeCommandBuffers;
+	nativeCommandBuffers.reserve(commandBuffers.size());
 
-	commandBuffers[m_CurrentFrameIndex]->Begin();
-	commandBuffers[m_CurrentFrameIndex]->TransitionTexture(currentBackBufferTexture, AkResourceState::UNDEFINED, AkResourceState::COPY_DESTINATION);
-	commandBuffers[m_CurrentFrameIndex]->ClearColor(currentBackBufferTexture, AkResourceState::COPY_DESTINATION, glm::vec4(0.1f, 0.2f, 0.3f, 1.f));
-	commandBuffers[m_CurrentFrameIndex]->TransitionTexture(currentBackBufferTexture, AkResourceState::COPY_DESTINATION, AkResourceState::PRESENT);
-	commandBuffers[m_CurrentFrameIndex]->End();
-	// -- Testing it Works
+	for (auto& commandBuffer : commandBuffers)
+		nativeCommandBuffers.push_back(commandBuffer->GetBuffer());
 
 	const vk::SubmitInfo submitInfo =
 	{
 		.waitSemaphoreCount = 1,
 		.pWaitSemaphores = &m_Storage->imageAcquireSemaphores[m_CurrentFrameIndex],
 		.pWaitDstStageMask = &kDefaultWaitStage,
-		.commandBufferCount = 1,
-		.pCommandBuffers = &commandBuffers[m_CurrentFrameIndex]->GetBuffer(),
+		.commandBufferCount = static_cast<uint32_t>(nativeCommandBuffers.size()),
+		.pCommandBuffers = nativeCommandBuffers.data(),
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &m_Storage->finishedRenderingSemaphores[m_CurrentFrameIndex],
 	};
@@ -192,6 +189,21 @@ void AkSwapchain::Present()
 	}
 
 	m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % m_Storage->backBuffersCount;
+}
+
+AkRenderTarget* AkSwapchain::GetCurrentBackBufferRenderTarget() const
+{
+	return m_BackBufferRenderTargets[m_CurrentBackBufferIndex].get();
+}
+
+uint32_t AkSwapchain::GetBackBuffersCount() const
+{
+	return m_Storage->backBuffersCount;
+}
+
+uint8_t AkSwapchain::GetCurrentFrameIndex() const
+{
+	return m_CurrentFrameIndex;
 }
 
 bool AkSwapchain::CreatePresentationSurface()
@@ -296,6 +308,8 @@ bool AkSwapchain::CreateSwapchain()
 bool AkSwapchain::CreateBackBuffersRenderTargets()
 {
 	m_BackBufferTextures.clear();
+	m_BackBufferRenderTargets.clear();
+
 	const AkTextureDescriptor descriptor =
 	{
 		.width = m_Storage->swapchainExtents.x,
@@ -308,11 +322,24 @@ bool AkSwapchain::CreateBackBuffersRenderTargets()
 	{
 		try
 		{
-			m_BackBufferTextures.push_back(std::make_unique<AkTexture>(descriptor, m_Storage->backBufferImages[i]));
+			m_BackBufferTextures.push_back(std::make_shared<AkTexture>(descriptor, m_Storage->backBufferImages[i]));
+
+			const AkRenderTargetAttachmentInfo colorAttachment =
+			{
+				.mip = 0,
+				.slice = 0,
+				.clearColor = {{{0.1f, 0.2f, 0.3f, 1.f}}},
+				.texture = m_BackBufferTextures.back().get(),
+				.state = AkResourceState::RENDER_TARGET,
+				.loadOperation = AkLoadOperation::CLEAR,
+				.storeOperation = AkStoreOperation::STORE,
+			};
+			
+			m_BackBufferRenderTargets.push_back(std::make_unique<AkRenderTarget>(std::vector{ colorAttachment }, std::nullopt));
 		}
 		catch (const std::exception& exception)
 		{
-			AkLogError("Failed to create back buffer image view: {}", exception.what());
+			AkLogError("Failed to create back buffer textures: {}", exception.what());
 			return false;
 		}
 	}
