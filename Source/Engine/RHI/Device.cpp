@@ -154,7 +154,7 @@ bool AkDevice::CreateInstance()
 
 	vk::ApplicationInfo applicationInfo =
 	{
-		.apiVersion = VK_API_VERSION_1_1
+		.apiVersion = VK_API_VERSION_1_3
 	};
 
 	vk::InstanceCreateInfo instanceCreateInfo =
@@ -379,7 +379,24 @@ bool AkDevice::CreateLogicalDevices()
 		deviceQueueInfos.push_back(queueCreateInfo);
 	}
 
+	auto features = sPhysicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDynamicRenderingFeatures>();
+	const vk::PhysicalDeviceSynchronization2Features& sync2Feature = features.get<vk::PhysicalDeviceSynchronization2Features>();
+	
+	if (!sync2Feature.synchronization2)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+		return false;
+	}
+
+	const vk::PhysicalDeviceDynamicRenderingFeatures& dynamicRenderingFeature = features.get<vk::PhysicalDeviceDynamicRenderingFeatures>();
+	if (!dynamicRenderingFeature.dynamicRendering)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+		return false;
+	}
+
 	vk::DeviceCreateInfo deviceCreateInfo = {};
+	deviceCreateInfo.pNext = &features.get<vk::PhysicalDeviceFeatures2>();
 	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueInfos.size());
 	deviceCreateInfo.pQueueCreateInfos = deviceQueueInfos.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensionToEnable.size());

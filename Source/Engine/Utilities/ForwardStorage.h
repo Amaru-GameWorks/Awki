@@ -28,5 +28,5 @@ public:
 	}
 
 private:
-	uint8_t m_Storage[Size];
+	uint8_t m_Storage[Size] = {};
 };

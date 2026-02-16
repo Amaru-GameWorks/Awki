@@ -1,5 +1,31 @@
 #include <Awki.h>
+#include <Core/Log.h>
+#include <RHI/Textures/Texture.h>
+#include <RHI/Textures/RenderTarget.h>
+#include <RHI/CommandBuffers/CommandBuffer.h>
+
 #include <print>
+
+static void OnEngineStart()
+{
+	AkLogTrace("Hello from Start!");
+}
+
+static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBuffer)
+{
+	AkTexture* colorTexture = backBuffer->GetColorTexture();
+	commandBuffer->TransitionTexture(colorTexture, AkResourceState::UNDEFINED, AkResourceState::RENDER_TARGET);
+
+	commandBuffer->BeginRendering(backBuffer);
+	commandBuffer->EndRendering();
+
+	commandBuffer->TransitionTexture(colorTexture, AkResourceState::RENDER_TARGET, AkResourceState::PRESENT);
+}
+
+static void OnEngineShutdown()
+{
+	AkLogTrace("Hello from Shutdown!");
+}
 
 int main(int /*argc*/, char** /*argv*/)
 {
@@ -20,6 +46,9 @@ int main(int /*argc*/, char** /*argv*/)
 		};
 
 		engine = std::make_shared<Awki>(descriptor);
+		engine->GetOnEngineStart().Add(OnEngineStart);
+		engine->GetOnFrameRender().Add(OnFrameRender);
+		engine->GetOnEngineShutdown().Add(OnEngineShutdown);
 	}
 	catch (const std::exception& exception)
 	{
