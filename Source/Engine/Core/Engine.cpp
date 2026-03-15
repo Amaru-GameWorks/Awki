@@ -28,7 +28,6 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 Awki::~Awki()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
-	AkDevice::WaitIdle();
 
 	m_Swapchain.reset();
 	m_Window.reset();
@@ -60,5 +59,6 @@ void Awki::Run()
 		}
 	}
 
+	AkDevice::WaitIdle();
 	m_OnEngineShutdown.Broadcast();
 }

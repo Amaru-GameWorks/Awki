@@ -16,12 +16,7 @@ public:
 	AkDelegateHandle() = default;
 	AkDelegateHandle(const AkDelegateHandle& other) { m_Handle = other.m_Handle; }
 
-	bool IsValid() const
-	{
-		return m_Handle && *m_Handle;
-	}
-
-	operator std::shared_ptr<bool>() const
+	operator uint32_t() const
 	{
 		return m_Handle;
 	}
@@ -32,9 +27,8 @@ public:
 	}
 
 private:
-	void Initialize() { m_Handle = std::make_shared<bool>(true); }
-	void Invalidate() { if (m_Handle) *m_Handle = false; }
-	std::shared_ptr<bool> m_Handle = nullptr;
+	AkDelegateHandle(const uint32_t& handle) { m_Handle = handle; }
+	uint32_t m_Handle;
 };
 
 namespace std
@@ -44,7 +38,7 @@ namespace std
 	{
 		size_t operator()(const AkDelegateHandle& handle) const
 		{
-			std::hash<std::shared_ptr<bool>> hasher;
+			std::hash<uint32_t> hasher;
 			return hasher(handle);
 		}
 	};
@@ -61,9 +55,7 @@ public:
 	template<typename OwnerClass>
 	AkDelegateHandle Add(void* owner, void(OwnerClass::* callback)())
 	{
-		AkDelegateHandle handle;
-		handle.Initialize();
-
+		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		auto function = std::bind(callback, static_cast<OwnerClass*>(owner));
 		m_Subscribers[handle] = function;
 		return std::move(handle);
@@ -71,9 +63,7 @@ public:
 
 	AkDelegateHandle Add(const std::function<void()>& function)
 	{
-		AkDelegateHandle handle;
-		handle.Initialize();
-
+		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		m_Subscribers[handle] = function;
 		return std::move(handle);
 	}
@@ -81,29 +71,23 @@ public:
 	void Broadcast()
 	{
 		for (auto& [handle, callback] : m_Subscribers)
-			if (handle.IsValid())
-				callback();
+			callback();
 	}
 
 	void Remove(AkDelegateHandle& handle)
 	{
 		auto found = m_Subscribers.find(handle);
 		if (found != m_Subscribers.end())
-		{
-			handle.Invalidate();
 			m_Subscribers.erase(found);
-		}
 	}
 
 	void RemoveAll()
 	{
-		for (auto& [handle, callback] : m_Subscribers)
-			const_cast<AkDelegateHandle&>(handle).Invalidate();
-
 		m_Subscribers.clear();
 	}
 
 private:
+	std::atomic_uint32_t m_Counter;
 	std::unordered_map<AkDelegateHandle, std::function<void()>> m_Subscribers;
 };
 
@@ -114,9 +98,7 @@ public:
 	template<typename OwnerClass, typename... Types>
 	AkDelegateHandle Add(void* owner, void(OwnerClass::* callback)(Types... Args))
 	{
-		AkDelegateHandle handle;
-		handle.Initialize();
-
+		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		auto function = AutomaticPlaceholderExpansionBind(owner, callback);
 		m_Subscribers[handle] = function;
 		return std::move(handle);
@@ -124,9 +106,7 @@ public:
 
 	AkDelegateHandle Add(const std::function<void(Types... Args)>& function)
 	{
-		AkDelegateHandle handle;
-		handle.Initialize();
-
+		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		m_Subscribers[handle] = function;
 		return std::move(handle);
 	}
@@ -134,30 +114,22 @@ public:
 	void Broadcast(Types... Args)
 	{
 		for (auto& [handle, callback] : m_Subscribers)
-		{
-			if (handle.IsValid())
-				callback(Args...);
-		}
+			callback(Args...);
 	}
 
 	void Remove(AkDelegateHandle& handle)
 	{
 		auto found = m_Subscribers.find(handle);
 		if (found != m_Subscribers.end())
-		{
-			handle.Invalidate();
 			m_Subscribers.erase(found);
-		}
 	}
 
 	void RemoveAll()
 	{
-		for (auto& [handle, callback] : m_Subscribers)
-			const_cast<AkDelegateHandle&>(handle).Invalidate();
-
 		m_Subscribers.clear();
 	}
 
 private:
+	std::atomic_uint32_t m_Counter;
 	std::unordered_map<AkDelegateHandle, std::function<void(Types... Args)>> m_Subscribers;
 };
