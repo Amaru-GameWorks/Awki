@@ -13,8 +13,8 @@ public:
 	bool Prepare();
 	void Present(const std::vector<class AkCommandBuffer*>& commandBuffers);
 	class AkRenderTarget* GetCurrentBackBufferRenderTarget() const;
-	const uint32_t GetBackBuffersCount() const;
-	const uint8_t GetCurrentFrameIndex() const;
+	uint32_t GetBackBuffersCount() const;
+	uint8_t GetCurrentFrameIndex() const;
 
 private:
 	bool m_NeedsRecreation = false;

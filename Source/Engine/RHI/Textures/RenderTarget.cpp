@@ -115,7 +115,7 @@ AkRenderTarget::~AkRenderTarget()
 {
 }
 
-AkTexture* AkRenderTarget::GetColorTexture(const int32_t index) const
+AkTexture* AkRenderTarget::GetColorTexture(const uint32_t index) const
 {
 	if (m_ColorAttachments.empty())
 		return nullptr;

@@ -63,7 +63,7 @@ public:
 	AkRenderTarget(std::optional<std::vector<AkRenderTargetAttachmentInfo>> colorAttachments, std::optional<AkRenderTargetAttachmentInfo> depthStencilAttachment);
 	~AkRenderTarget();
 
-	class AkTexture* GetColorTexture(const int32_t index = 0) const;
+	class AkTexture* GetColorTexture(const uint32_t index = 0) const;
 	class AkTexture* GetDepthStencilTexture() const;
 	const struct AkTextureDescriptor& GetValidTextureDescriptor() const;
 

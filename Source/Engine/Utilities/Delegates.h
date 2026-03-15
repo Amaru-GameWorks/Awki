@@ -1,6 +1,7 @@
 #pragma once
 #include "PlaceholderExpansion.h"
 
+#include <atomic>
 #include <memory>
 #include <functional>
 #include <unordered_map>
@@ -58,14 +59,14 @@ public:
 		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		auto function = std::bind(callback, static_cast<OwnerClass*>(owner));
 		m_Subscribers[handle] = function;
-		return std::move(handle);
+		return handle;
 	}
 
 	AkDelegateHandle Add(const std::function<void()>& function)
 	{
 		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		m_Subscribers[handle] = function;
-		return std::move(handle);
+		return handle;
 	}
 
 	void Broadcast()
@@ -95,20 +96,20 @@ template<typename... Types>
 class AkCustomDelegate
 {
 public:
-	template<typename OwnerClass, typename... Types>
+	template<typename OwnerClass>
 	AkDelegateHandle Add(void* owner, void(OwnerClass::* callback)(Types... Args))
 	{
 		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		auto function = AutomaticPlaceholderExpansionBind(owner, callback);
 		m_Subscribers[handle] = function;
-		return std::move(handle);
+		return handle;
 	}
 
 	AkDelegateHandle Add(const std::function<void(Types... Args)>& function)
 	{
 		AkDelegateHandle handle = m_Counter.fetch_add(1);
 		m_Subscribers[handle] = function;
-		return std::move(handle);
+		return handle;
 	}
 
 	void Broadcast(Types... Args)

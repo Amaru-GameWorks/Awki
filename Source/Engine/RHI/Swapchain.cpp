@@ -196,12 +196,12 @@ AkRenderTarget* AkSwapchain::GetCurrentBackBufferRenderTarget() const
 	return m_BackBufferRenderTargets[m_CurrentBackBufferIndex].get();
 }
 
-const uint32_t AkSwapchain::GetBackBuffersCount() const
+uint32_t AkSwapchain::GetBackBuffersCount() const
 {
 	return m_Storage->backBuffersCount;
 }
 
-const uint8_t AkSwapchain::GetCurrentFrameIndex() const
+uint8_t AkSwapchain::GetCurrentFrameIndex() const
 {
 	return m_CurrentFrameIndex;
 }
