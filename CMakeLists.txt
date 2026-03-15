@@ -13,6 +13,9 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 # Find Vulkan
 find_package(Vulkan REQUIRED)
 
+#Find Slang
+find_library(Slang_LIBRARY NAMES slang slang-compiler HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
+
 # Include ThirdParty projects
 include(BuildThirdPartyLibraries)
 
@@ -59,7 +62,11 @@ include_directories(SYSTEM
 list(APPEND THIRDPARTY_LINK_TARGETS
 	SDL3-static
 	Vulkan::Vulkan
+	${Slang_LIBRARY}
 )
+
+# Resources Targets
+add_subdirectory(Resources)
 
 # Add Engine library
 add_subdirectory(Source/Engine)

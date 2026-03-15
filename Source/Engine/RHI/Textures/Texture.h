@@ -8,7 +8,7 @@ namespace vk
 	class ImageView;
 }
 
-enum AkTextureFlagBits
+enum AkTextureFlagBits : uint16_t
 {
 	AkTextureFlags_SRGB_HINT					= 1 << 0,
 	AkTextureFlags_BIND_AS_SHADER_RESOURCE		= 1 << 1,
@@ -18,7 +18,6 @@ enum AkTextureFlagBits
 	AkTextureFlags_COPY_DESTINATION				= 1 << 5,
 	AkTextureFlags_COPY_SOURCE					= 1 << 6,
 	AkTextureFlags_AUTO_RESOLVE_MSAA			= 1 << 7,
-	AkTextureFlags_RENDER_INTO_SUB_RESOURCES	= 1 << 8,
 
 	AkTextureFlags_DEFAULT			= AkTextureFlags_BIND_AS_SHADER_RESOURCE | AkTextureFlags_COPY_DESTINATION,
 	AkTextureFlags_DEFAULT_RT		= AkTextureFlags_BIND_AS_RENDER_TARGET | AkTextureFlags_BIND_AS_SHADER_RESOURCE | AkTextureFlags_AUTO_RESOLVE_MSAA,
@@ -26,7 +25,7 @@ enum AkTextureFlagBits
 };
 using AkTextureFlags = std::underlying_type_t<AkTextureFlagBits>;
 
-enum class AkTextureType
+enum class AkTextureType : uint8_t
 {
 	TEXTURE_1D,
 	TEXTURE_2D,
@@ -37,7 +36,7 @@ enum class AkTextureType
 	CUBEMAP_ARRAY
 };
 
-enum class AkMSAA
+enum class AkMSAA : uint8_t
 {
 	X1,
 	X2,

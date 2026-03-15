@@ -3,18 +3,13 @@
 #include "RHI/Device.h"
 #include "RHI/Textures/Texture.h"
 #include "RHI/Textures/RenderTarget.h"
+#include "RHI/Pipeline/Shader.h"
+#include "RHI/Pipeline/Material.h"
+#include "RHI/Pipeline/PipelineStateObject.h"
 
 #include <vulkan/vulkan.hpp>
 
-constexpr vk::ImageAspectFlags GetAspectMask(const AkPixelFormat format)
-{
-	if (IsDepthPixelFormat(format))
-		return vk::ImageAspectFlagBits::eDepth;
-	else
-		return vk::ImageAspectFlagBits::eColor;
-}
-
-constexpr vk::ImageLayout GetImageLayout(const AkResourceState resourceState)
+extern vk::ImageLayout GetImageLayout(const AkResourceState resourceState)
 {
 	switch (resourceState)
 	{
@@ -56,6 +51,14 @@ constexpr vk::ImageLayout GetImageLayout(const AkResourceState resourceState)
 			AkLogCritical("Resource state not registered in this function");
 			return vk::ImageLayout::eUndefined;
 	}
+}
+
+constexpr vk::ImageAspectFlags GetAspectMask(const AkPixelFormat format)
+{
+	if (IsDepthPixelFormat(format))
+		return vk::ImageAspectFlagBits::eDepth;
+	else
+		return vk::ImageAspectFlagBits::eColor;
 }
 
 constexpr vk::AccessFlags2 GetAccessMask(const AkResourceState resourceState)
@@ -184,12 +187,87 @@ void AkCommandBuffer::BeginRendering(AkRenderTarget* renderTarget)
 		.pDepthAttachment = depthAttachment.has_value() ? &depthAttachment.value() : nullptr
 	};
 
+
+	const vk::Viewport viewport = 
+	{ 
+		.width = static_cast<float>(descriptor.width),
+		.height = static_cast<float>(descriptor.height),
+		.minDepth = 0.0f, 
+		.maxDepth = 1.0f 
+	};
+
+	const vk::Rect2D scissor = 
+	{ 
+		.extent = 
+		{
+			.width = static_cast<uint32_t>(descriptor.width),
+			.height = static_cast<uint32_t>(descriptor.height)
+		}
+	};
+	
+	m_Storage->commandBuffer.setViewport(0, 1, &viewport);
+	m_Storage->commandBuffer.setScissor(0, 1, &scissor);
 	m_Storage->commandBuffer.beginRendering(renderingInfo);
 }
 
 void AkCommandBuffer::EndRendering()
 {
 	m_Storage->commandBuffer.endRendering();
+}
+
+void AkCommandBuffer::DrawMaterialNoMesh(AkMaterial* material, AkPipelineStateObject* pso, const uint32_t vertCount)
+{
+	AkShader* shader = material->GetShader();
+	m_Storage->commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pso->GetPipeline());
+	m_Storage->commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, shader->GetPipelineLayout(), 0, 1, &material->GetDescriptorSet(), 0, nullptr);
+	m_Storage->commandBuffer.draw(vertCount, 1, 0, 0);
+}
+
+void AkCommandBuffer::TransitionRenderTargetColorAttachments(AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState)
+{
+	const std::vector<AkRenderTargetAttachmentInfo>& colorAttachmentsInfo = renderTarget->GetColorAttachmentInfos();
+	if (colorAttachmentsInfo.empty())
+		return;
+
+	std::vector<vk::ImageMemoryBarrier2> imageMemoryBarriers = {};
+	imageMemoryBarriers.reserve(colorAttachmentsInfo.size());
+
+	for (auto const& attachmentInfo : colorAttachmentsInfo)
+	{
+		const AkTextureDescriptor& descriptor = attachmentInfo.texture->GetDescriptor();
+		const vk::ImageMemoryBarrier2 imageMemoryBarrier =
+		{
+			.srcStageMask = GetPipelineStageFlags(sourceState),
+			.srcAccessMask = GetAccessMask(sourceState),
+			.dstStageMask = GetPipelineStageFlags(destinationState),
+			.dstAccessMask = GetAccessMask(destinationState),
+			.oldLayout = GetImageLayout(sourceState),
+			.newLayout = GetImageLayout(destinationState),
+			.image = attachmentInfo.texture->GetImage(),
+			.subresourceRange =
+			{
+				.aspectMask = GetAspectMask(descriptor.format),
+				.levelCount = descriptor.mips,
+				.layerCount = descriptor.slices
+			}
+		};
+		imageMemoryBarriers.push_back(imageMemoryBarrier);
+	}
+
+	const vk::DependencyInfo barrierDependencyInfo =
+	{
+		.imageMemoryBarrierCount = static_cast<uint32_t>(imageMemoryBarriers.size()),
+		.pImageMemoryBarriers = imageMemoryBarriers.data()
+	};
+
+	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
+}
+
+void AkCommandBuffer::TransitionRenderTargetDepthAttachment(AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState)
+{
+	const std::optional<AkRenderTargetAttachmentInfo>& depthStencilAttachmentInfo = renderTarget->GetDepthStencilAttachmentInfo();
+	if(depthStencilAttachmentInfo.has_value())
+		TransitionTexture(depthStencilAttachmentInfo->texture, sourceState, destinationState);
 }
 
 void AkCommandBuffer::TransitionTexture(AkTexture* texture, const AkResourceState sourceState, const AkResourceState destinationState)

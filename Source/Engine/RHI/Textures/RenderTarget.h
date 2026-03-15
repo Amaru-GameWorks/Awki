@@ -32,14 +32,14 @@ union AkClearValue
 	AkClearDepthStencilValue depthStencil;
 };
 
-enum class AkLoadOperation
+enum class AkLoadOperation : uint8_t
 {
 	LOAD,
 	CLEAR,
 	DONT_CARE
 };
 
-enum class AkStoreOperation
+enum class AkStoreOperation : uint8_t
 {
 	STORE,
 	DONT_CARE
@@ -60,6 +60,8 @@ struct AkRenderTargetAttachmentInfo
 class AkRenderTarget
 {
 public:
+	AkRenderTarget(const AkRenderTargetAttachmentInfo& depthStencilAttachment);
+	AkRenderTarget(const std::vector<AkRenderTargetAttachmentInfo>& colorAttachments);
 	AkRenderTarget(std::optional<std::vector<AkRenderTargetAttachmentInfo>> colorAttachments, std::optional<AkRenderTargetAttachmentInfo> depthStencilAttachment);
 	~AkRenderTarget();
 

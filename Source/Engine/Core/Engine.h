@@ -1,5 +1,6 @@
 #pragma once
 #include "Version.h"
+#include "RHI/Swapchain.h"
 #include "Platform/Window.h"
 #include "Utilities/Delegates.h"
 
@@ -28,11 +29,14 @@ public:
 	AkSimpleDelegate& GetOnEngineShutdown() { return m_OnEngineShutdown; }
 	AkOnFrameRender& GetOnFrameRender() { return m_OnFrameRender; }
 
+	const std::shared_ptr<AkWindow>& GetMainWindow() const { return m_Window; }
+	const std::shared_ptr<AkSwapchain>& GetMainSwapchain() const { return m_Swapchain; }
+
 private:
 	AkSimpleDelegate m_OnEngineStart = {};
 	AkSimpleDelegate m_OnEngineShutdown = {};
 	AkOnFrameRender m_OnFrameRender = {};
 
 	std::shared_ptr<AkWindow> m_Window = nullptr;
-	std::shared_ptr<class AkSwapchain> m_Swapchain = nullptr;
+	std::shared_ptr<AkSwapchain> m_Swapchain = nullptr;
 };

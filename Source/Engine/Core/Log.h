@@ -22,7 +22,7 @@
 #define AkLogError(format, ...)		{ AkLog::AddLogEntry(AkLogLevel::ERROR, std::source_location::current(), format , ##__VA_ARGS__); }
 #define AkLogCritical(format, ...)	{ AkLog::AddLogEntry(AkLogLevel::CRITICAL, std::source_location::current(), format , ##__VA_ARGS__); DEBUG_BREAK(); }
 
-enum class AkLogLevel
+enum class AkLogLevel : uint8_t
 {
 	INFO,
 	TRACE,

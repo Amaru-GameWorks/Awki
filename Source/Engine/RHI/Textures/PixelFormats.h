@@ -1,7 +1,7 @@
 #pragma once
 #include "Core/Assert.h"
 
-enum class AkPixelFormat
+enum class AkPixelFormat : uint8_t
 {
 	UNDEFINED,
 
