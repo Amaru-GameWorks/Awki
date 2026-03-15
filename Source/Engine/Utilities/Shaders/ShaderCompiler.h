@@ -3,6 +3,7 @@
 
 #include <slang/slang.h>
 
+#include <vector>
 #include <filesystem>
 
 struct AkShaderModuleInfo
