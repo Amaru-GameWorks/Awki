@@ -3,49 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 
-constexpr vk::ImageLayout GetImageLayout(const AkResourceState resourceState)
-{
-	switch (resourceState)
-	{
-		default:
-			AkLogCritical("Resource state not registered in this function");
-			return vk::ImageLayout::eUndefined;
-
-		case AkResourceState::INDEX_BUFFER:
-		case AkResourceState::VERTEX_BUFFER:
-		case AkResourceState::CONSTANT_BUFFER:
-		case AkResourceState::INDIRECT_ARGUMENT:
-			AkLogCritical("Resource state is not a texture compatible state");
-			return vk::ImageLayout::eUndefined;
-
-		case AkResourceState::UNDEFINED:
-			return vk::ImageLayout::eUndefined;
-
-		case AkResourceState::RENDER_TARGET:
-			return vk::ImageLayout::eColorAttachmentOptimal;
-
-		case AkResourceState::UNORDERED_ACCESS:
-			return	vk::ImageLayout::eGeneral;
-
-		case AkResourceState::DEPTH_READ:
-			return	vk::ImageLayout::eDepthStencilReadOnlyOptimal;
-
-		case AkResourceState::DEPTH_WRITE:
-			return	vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-		case AkResourceState::SHADER_RESOURCE:
-			return vk::ImageLayout::eShaderReadOnlyOptimal;
-
-		case AkResourceState::COPY_DESTINATION:
-			return vk::ImageLayout::eTransferDstOptimal;
-
-		case AkResourceState::COPY_SOURCE:
-			return vk::ImageLayout::eTransferSrcOptimal;
-
-		case AkResourceState::PRESENT:
-			return vk::ImageLayout::ePresentSrcKHR;
-	}
-}
+extern vk::ImageLayout GetImageLayout(const AkResourceState resourceState);
 
 constexpr vk::AttachmentLoadOp GetLoadOperation(const AkLoadOperation& loadOp)
 {
@@ -77,6 +35,14 @@ struct AkRenderTargetStorage
 	std::vector<vk::RenderingAttachmentInfo> colorAttachments;
 	std::optional<vk::RenderingAttachmentInfo> depthAttachment;
 };
+
+AkRenderTarget::AkRenderTarget(const AkRenderTargetAttachmentInfo& depthStencilAttachment)
+	: AkRenderTarget(std::nullopt, depthStencilAttachment)
+{ }
+
+AkRenderTarget::AkRenderTarget(const std::vector<AkRenderTargetAttachmentInfo>& colorAttachments)
+	: AkRenderTarget(colorAttachments, std::nullopt)
+{ }
 
 AkRenderTarget::AkRenderTarget(std::optional<std::vector<AkRenderTargetAttachmentInfo>> colorAttachments, std::optional<AkRenderTargetAttachmentInfo> depthStencilAttachment)
 {

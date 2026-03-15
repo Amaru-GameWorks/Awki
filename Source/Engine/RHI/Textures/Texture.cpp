@@ -3,24 +3,21 @@
 
 #include <vulkan/vulkan.hpp>
 
-constexpr vk::ImageViewType GetImageViewType(const AkTextureType type)
+extern vk::SampleCountFlagBits GetMSAA(const AkMSAA msaa)
 {
-	switch (type)
+	switch (msaa)
 	{
-		case AkTextureType::TEXTURE_3D:			return vk::ImageViewType::e3D;
-		case AkTextureType::TEXTURE_1D:			return vk::ImageViewType::e1D;
-		case AkTextureType::TEXTURE_2D:			return vk::ImageViewType::e2D;
-		case AkTextureType::TEXTURE_ARRAY_1D:	return vk::ImageViewType::e1DArray;
-		case AkTextureType::TEXTURE_ARRAY_2D:	return vk::ImageViewType::e2DArray;
-		case AkTextureType::CUBEMAP:			return vk::ImageViewType::eCube;
-		case AkTextureType::CUBEMAP_ARRAY:		return vk::ImageViewType::eCubeArray;
+		case AkMSAA::X1:			return vk::SampleCountFlagBits::e1;
+		case AkMSAA::X2:			return vk::SampleCountFlagBits::e2;
+		case AkMSAA::X4:			return vk::SampleCountFlagBits::e4;
+		case AkMSAA::X8:			return vk::SampleCountFlagBits::e8;
 		default:
-			AkLogCritical("Texture type not registered in this function");
-			return vk::ImageViewType::e2D;
+			AkLogCritical("MSAA not registered in this function");
+			return vk::SampleCountFlagBits::e1;
 	}
 }
 
-constexpr vk::Format GetFormat(const AkPixelFormat format)
+extern vk::Format GetFormat(const AkPixelFormat format)
 {
 	switch (format)
 	{
@@ -87,6 +84,23 @@ constexpr vk::Format GetFormat(const AkPixelFormat format)
 		default:
 			AkLogCritical("Pixel format not registered in this function");
 			return vk::Format::eUndefined;
+	}
+}
+
+constexpr vk::ImageViewType GetImageViewType(const AkTextureType type)
+{
+	switch (type)
+	{
+		case AkTextureType::TEXTURE_3D:			return vk::ImageViewType::e3D;
+		case AkTextureType::TEXTURE_1D:			return vk::ImageViewType::e1D;
+		case AkTextureType::TEXTURE_2D:			return vk::ImageViewType::e2D;
+		case AkTextureType::TEXTURE_ARRAY_1D:	return vk::ImageViewType::e1DArray;
+		case AkTextureType::TEXTURE_ARRAY_2D:	return vk::ImageViewType::e2DArray;
+		case AkTextureType::CUBEMAP:			return vk::ImageViewType::eCube;
+		case AkTextureType::CUBEMAP_ARRAY:		return vk::ImageViewType::eCubeArray;
+		default:
+			AkLogCritical("Texture type not registered in this function");
+			return vk::ImageViewType::e2D;
 	}
 }
 

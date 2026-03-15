@@ -6,6 +6,9 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.hpp>
 
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 static vk::Device sDevice = {};
@@ -18,6 +21,10 @@ static vk::Queue sTransferQueue = {};
 static uint32_t sGraphicsQueueFamilyIndex = {};
 static uint32_t sComputeQueueFamilyIndex = {};
 static uint32_t sTransferQueueFamilyIndex = {};
+static size_t sMinConstantBufferAlignment = {};
+static size_t sMinStructuredBufferAlignment = {};
+
+static VmaAllocator sMemoryAllocator = {};
 
 #if DEBUG
 static vk::DebugUtilsMessengerEXT sDebugMessenger = {};
@@ -39,7 +46,7 @@ static vk::Bool32 VKAPI_PTR ValidationDebugMessages(vk::DebugUtilsMessageSeverit
 			break;
 
 		case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
-			AkLogError("{}", pCallbackData->pMessage);
+			AkLogCritical("{}", pCallbackData->pMessage);
 			break;
 	}
 
@@ -70,6 +77,9 @@ bool AkDevice::Initialize()
 	if (!InitializeExtensions())
 		return false;
 
+	if (!InitializeMemoryAllocator())
+		return false;
+
 	if (!AkCommandBufferAllocator::Initialize())
 		return false;
 
@@ -79,6 +89,7 @@ bool AkDevice::Initialize()
 void AkDevice::Deinitialize()
 {
 	AkCommandBufferAllocator::Deinitialize();
+	vmaDestroyAllocator(sMemoryAllocator);
 
 #if DEBUG
 	sInstance.destroyDebugUtilsMessengerEXT(sDebugMessenger);
@@ -123,6 +134,11 @@ const vk::Queue& AkDevice::GetTransferQueue()
 	return sTransferQueue;
 }
 
+const VmaAllocator& AkDevice::GetMemoryAllocator()
+{
+	return sMemoryAllocator;
+}
+
 uint32_t AkDevice::GetGraphicsQueueFamilyIndex()
 {
 	return sGraphicsQueueFamilyIndex;
@@ -136,6 +152,16 @@ uint32_t AkDevice::GetComputeQueueFamilyIndex()
 uint32_t AkDevice::GetTransferQueueFamilyIndex()
 {
 	return sTransferQueueFamilyIndex;
+}
+
+size_t AkDevice::GetMinConstantBufferAlignment()
+{
+	return sMinConstantBufferAlignment;
+}
+
+size_t AkDevice::GetMinStructuredBufferAlignment()
+{
+	return sMinStructuredBufferAlignment;
 }
 
 bool AkDevice::SupportsAsyncCompute()
@@ -305,7 +331,9 @@ bool AkDevice::CreateLogicalDevices()
 			selectedDeviceGraphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
 			selectedDeviceComputeQueueFamilyIndex = computeQueueFamilyIndex;
 			selectedDeviceTransferQueueFamilyIndex = transferQueueFamilyIndex;
-
+			
+			sMinConstantBufferAlignment = properties.limits.minUniformBufferOffsetAlignment;
+			sMinStructuredBufferAlignment = properties.limits.minStorageBufferOffsetAlignment;
 			sPhysicalDevice = device;
 		}
 	}
@@ -379,7 +407,13 @@ bool AkDevice::CreateLogicalDevices()
 		deviceQueueInfos.push_back(queueCreateInfo);
 	}
 
-	auto features = sPhysicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDynamicRenderingFeatures>();
+	auto features = sPhysicalDevice.getFeatures2<
+		vk::PhysicalDeviceFeatures2, 
+		vk::PhysicalDeviceSynchronization2Features, 
+		vk::PhysicalDeviceDynamicRenderingFeatures, 
+		vk::PhysicalDeviceBufferDeviceAddressFeatures, 
+		vk::PhysicalDeviceDescriptorIndexingFeatures,
+		vk::PhysicalDeviceShaderDrawParameterFeatures>();
 	const vk::PhysicalDeviceSynchronization2Features& sync2Feature = features.get<vk::PhysicalDeviceSynchronization2Features>();
 	
 	if (!sync2Feature.synchronization2)
@@ -395,12 +429,35 @@ bool AkDevice::CreateLogicalDevices()
 		return false;
 	}
 
-	vk::DeviceCreateInfo deviceCreateInfo = {};
-	deviceCreateInfo.pNext = &features.get<vk::PhysicalDeviceFeatures2>();
-	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueInfos.size());
-	deviceCreateInfo.pQueueCreateInfos = deviceQueueInfos.data();
-	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(extensionToEnable.size());
-	deviceCreateInfo.ppEnabledExtensionNames = extensionToEnable.data();
+	const vk::PhysicalDeviceBufferDeviceAddressFeatures& bufferDeviceAddressFeature = features.get<vk::PhysicalDeviceBufferDeviceAddressFeatures>();
+	if (!bufferDeviceAddressFeature.bufferDeviceAddress)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+		return false;
+	}
+
+	const vk::PhysicalDeviceDescriptorIndexingFeatures& descriptorIndexingFeature = features.get<vk::PhysicalDeviceDescriptorIndexingFeatures>();
+	if (!descriptorIndexingFeature.descriptorBindingPartiallyBound || !descriptorIndexingFeature.runtimeDescriptorArray)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+		return false;
+	}
+
+	const vk::PhysicalDeviceShaderDrawParameterFeatures& shaderDrawParameters = features.get<vk::PhysicalDeviceShaderDrawParameterFeatures>();
+	if (!shaderDrawParameters.shaderDrawParameters)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME);
+		return false;
+	}
+
+	const vk::DeviceCreateInfo deviceCreateInfo = 
+	{
+		.pNext = &features.get<vk::PhysicalDeviceFeatures2>(),
+		.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueInfos.size()),
+		.pQueueCreateInfos = deviceQueueInfos.data(),
+		.enabledExtensionCount = static_cast<uint32_t>(extensionToEnable.size()),
+		.ppEnabledExtensionNames = extensionToEnable.data()
+	};
 
 	try
 	{
@@ -444,6 +501,29 @@ bool AkDevice::InitializeExtensions()
 		return false;
 	}
 #endif
+
+	return true;
+}
+
+bool AkDevice::InitializeMemoryAllocator()
+{
+	VmaVulkanFunctions vulkanFunctions = {};
+	vulkanFunctions.vkGetInstanceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr;
+	vulkanFunctions.vkGetDeviceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr;
+
+	VmaAllocatorCreateInfo allocatorCreateInfo = {};
+	allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+	allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+	allocatorCreateInfo.physicalDevice = sPhysicalDevice;
+	allocatorCreateInfo.device = sDevice;
+	allocatorCreateInfo.instance = sInstance;
+	allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+	if (vmaCreateAllocator(&allocatorCreateInfo, &sMemoryAllocator) != VK_SUCCESS)
+	{
+		AkLogError("Failed to initialize vulkan memory allocator!");
+		return false;
+	}
 
 	return true;
 }

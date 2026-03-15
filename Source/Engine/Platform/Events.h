@@ -2,7 +2,7 @@
 #include <glm/vec2.hpp>
 #include <unordered_map>
 
-enum class AkKeyCode
+enum class AkKeyCode : uint8_t
 {
 	ALPHA_0,
 	ALPHA_1,
@@ -116,7 +116,7 @@ enum class AkKeyCode
 	NUM_LOCK
 };
 
-enum class AkMouseButton
+enum class AkMouseButton : uint8_t
 {
 	LEFT,
 	MIDDLE,

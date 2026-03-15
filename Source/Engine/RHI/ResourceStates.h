@@ -1,6 +1,7 @@
 #pragma once
+#include <cstdint>
 
-enum class AkResourceState
+enum class AkResourceState : uint8_t
 {
 	UNDEFINED,
 	INDEX_BUFFER,

@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-enum class AkDeviceQueue
+enum class AkDeviceQueue : uint8_t
 {
 	GRAPHICS,
 	COMPUTE,
