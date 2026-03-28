@@ -29,8 +29,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	set(ALL_WARNINGS_AS_ERRORS "/external:anglebrackets /external:W0 /analyze:external- /WX /W4")
 
 	# Per Target Compiler Settings
-	set(CMAKE_CXX_FLAGS_DEBUG "/arch:AVX /MP /GR- /Od /wd4100 /wd4189 ${ALL_WARNINGS_AS_ERRORS}")
-	set(CMAKE_CXX_FLAGS_RELEASE "/arch:AVX /MP /GR- /Ot ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_DEBUG "/arch:AVX /MP /GR- /Od /wd4100 /wd4189 /wd4324 ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_RELEASE "/arch:AVX /MP /GR- /Ot /wd4324 ${ALL_WARNINGS_AS_ERRORS}")
 	set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug>:EditAndContinue>")
 endif()
 

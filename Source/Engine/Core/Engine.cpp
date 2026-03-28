@@ -4,6 +4,9 @@
 #include "RHI/Swapchain.h"
 #include "Platform/Window.h"
 #include "Platform/Events.h"
+
+#include "RHI/Pipeline/PipelineStateManager.h"
+#include "RHI/Pipeline/BindlessResourcesManager.h"
 #include "RHI/CommandBuffers/CommandBufferAllocator.h"
 
 Awki::Awki(const AkInstanceDescriptor& descriptor)
@@ -19,6 +22,9 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 	if (!AkDevice::Initialize())
 		throw std::runtime_error("Failed to initialize RHI Device!");
 
+	AkPipelineStateManager::Initialize();
+	AkBindlessResourcesManager::Initialize();
+
 	m_Window = std::make_shared<AkWindow>(descriptor.windowDescriptor);
 	m_Swapchain = std::make_shared<AkSwapchain>(m_Window);
 
@@ -32,6 +38,8 @@ Awki::~Awki()
 	m_Swapchain.reset();
 	m_Window.reset();
 
+	AkBindlessResourcesManager::Deinitialize();
+	AkPipelineStateManager::Deinitialize();
 	AkDevice::Deinitialize();
 	AkEvents::Deinitialize();
 	AkLog::Deinitialize();
@@ -45,7 +53,6 @@ void Awki::Run()
 	while (!AkEvents::ShouldClose())
 	{
 		AkEvents::PollEvents();
-		
 		if (m_Swapchain->Prepare())
 		{
 			AkCommandBuffer* currentCommandBuffer = commandBuffers[m_Swapchain->GetCurrentFrameIndex()];

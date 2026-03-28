@@ -12,7 +12,38 @@
 extern vk::Format GetFormat(const AkPixelFormat format);
 extern vk::SampleCountFlagBits GetMSAA(const AkMSAA msaa);
 
-vk::BlendOp GetBlendOperation(const AkBlendingOperation blendOperation)
+constexpr vk::PrimitiveTopology GetPrimitiveTopology(const AkPrimitiveType primitiveType)
+{
+	switch (primitiveType)
+	{
+		case AkPrimitiveType::LINES:
+			return vk::PrimitiveTopology::eLineList;
+
+		case AkPrimitiveType::LINE_STRIP:
+			return vk::PrimitiveTopology::eLineStrip;
+		
+		case AkPrimitiveType::PATCH_LIST:
+			return vk::PrimitiveTopology::ePatchList;
+		
+		case AkPrimitiveType::POINTS:
+			return vk::PrimitiveTopology::ePointList;
+		
+		case AkPrimitiveType::TRIANGLES:
+			return vk::PrimitiveTopology::eTriangleList;
+		
+		case AkPrimitiveType::TRIANGLE_FAN:
+			return vk::PrimitiveTopology::eTriangleFan;
+		
+		case AkPrimitiveType::TRIANGLE_STRIP:
+			return vk::PrimitiveTopology::eTriangleStrip;
+
+		default:
+			AkLogCritical("Primitive topology not registered in this function");
+			return vk::PrimitiveTopology::eTriangleList;
+	}
+}
+
+constexpr vk::BlendOp GetBlendOperation(const AkBlendingOperation blendOperation)
 {
 	switch (blendOperation)
 	{
@@ -37,7 +68,7 @@ vk::BlendOp GetBlendOperation(const AkBlendingOperation blendOperation)
 	}
 }
 
-vk::BlendFactor GetBlendFactor(const AkBlendingFactor blendFactor)
+constexpr vk::BlendFactor GetBlendFactor(const AkBlendingFactor blendFactor)
 {
 	switch (blendFactor)
 	{
@@ -174,7 +205,7 @@ struct AkPipelineStorage
 	vk::Pipeline pipeline;
 };
 
-AkPipelineStateObject::AkPipelineStateObject(AkMaterial* material, AkRenderTarget* renderTarget)
+AkPipelineStateObject::AkPipelineStateObject(AkMaterial* material, const AkPrimitiveType primitiveType, AkRenderTarget* renderTarget)
 {
 	AkShader* shader = material->GetShader();
 	const AkRasterizerState& rasterizerState = material->GetRasterizerState();
@@ -188,9 +219,9 @@ AkPipelineStateObject::AkPipelineStateObject(AkMaterial* material, AkRenderTarge
 		{.stage = vk::ShaderStageFlagBits::eVertex, .module = shaderModule, .pName = "main" },
 		{.stage = vk::ShaderStageFlagBits::eFragment, .module = shaderModule, .pName = "main" }
 	};
-	
+
 	const vk::PipelineVertexInputStateCreateInfo vertexInputState = {};
-	const vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState = { .topology = vk::PrimitiveTopology::eTriangleList };
+	const vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState = { .topology = GetPrimitiveTopology(primitiveType) };
 	const std::vector<vk::DynamicState> dynamicStates = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
 	const vk::PipelineDynamicStateCreateInfo dynamicState = { .dynamicStateCount = 2, .pDynamicStates = dynamicStates.data() };
 
@@ -213,7 +244,7 @@ AkPipelineStateObject::AkPipelineStateObject(AkMaterial* material, AkRenderTarge
 	vk::PipelineMultisampleStateCreateInfo multisampleState = { .rasterizationSamples = vk::SampleCountFlagBits::e1 };
 	const std::vector<AkRenderTargetAttachmentInfo>& colorAttachmentsInfo = renderTarget->GetColorAttachmentInfos();
 	const std::optional<AkRenderTargetAttachmentInfo>& depthStencilAttachmentInfo = renderTarget->GetDepthStencilAttachmentInfo();
-	
+
 	vk::PipelineColorBlendStateCreateInfo colorBlendState = {};
 	vk::PipelineRenderingCreateInfo piepelineRenderingCreateInfo = {};
 
@@ -257,7 +288,7 @@ AkPipelineStateObject::AkPipelineStateObject(AkMaterial* material, AkRenderTarge
 		colorBlendState.attachmentCount = static_cast<uint32_t>(colorAttachmentBlendModes.size());
 		colorBlendState.pAttachments = colorAttachmentBlendModes.data();
 	};
-	
+
 	if (depthStencilAttachmentInfo.has_value())
 	{
 		const AkTextureDescriptor& depthTextureDescriptor = depthStencilAttachmentInfo->texture->GetDescriptor();

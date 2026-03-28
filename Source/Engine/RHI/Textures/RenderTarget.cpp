@@ -1,5 +1,6 @@
 #include "RenderTarget.h"
 #include "Texture.h"
+#include "Utilities/Hash.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -53,6 +54,8 @@ AkRenderTarget::AkRenderTarget(std::optional<std::vector<AkRenderTargetAttachmen
 
 		for (const auto& colorAttachment : m_ColorAttachments)
 		{
+			HashCombine(m_Hash, colorAttachment.texture->GetDescriptor().format);
+
 			m_Storage->colorAttachments.push_back({
 				.imageView = colorAttachment.texture->GetImageView(colorAttachment.mip, colorAttachment.slice),
 				.imageLayout = GetImageLayout(colorAttachment.state),
@@ -66,6 +69,8 @@ AkRenderTarget::AkRenderTarget(std::optional<std::vector<AkRenderTargetAttachmen
 	if (depthStencilAttachment.has_value())
 	{
 		m_DepthStencilAttachment = std::move(depthStencilAttachment);
+		HashCombine(m_Hash, m_DepthStencilAttachment->texture->GetDescriptor().format);
+
 		m_Storage->depthAttachment =
 		{
 			.imageView = m_DepthStencilAttachment->texture->GetImageView(0, 0),

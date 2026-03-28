@@ -30,16 +30,18 @@ AkShaderCompiler::AkShaderCompiler()
 	static constexpr std::array kCompilerOptions = std::to_array<slang::CompilerOptionEntry>
 	({
 		{ slang::CompilerOptionName::EmitSpirvMethod,		{ slang::CompilerOptionValueKind::Int, SLANG_EMIT_SPIRV_DIRECTLY }},
-		{ slang::CompilerOptionName::Optimization,			{ slang::CompilerOptionValueKind::Int, SLANG_OPTIMIZATION_LEVEL_DEFAULT }},
+		{ slang::CompilerOptionName::Optimization,			{ slang::CompilerOptionValueKind::Int, SLANG_OPTIMIZATION_LEVEL_MAXIMAL }},
 		{ slang::CompilerOptionName::VulkanInvertY,			{ slang::CompilerOptionValueKind::Int, 1 }},
-		{ slang::CompilerOptionName::VulkanBindShiftAll,	{ slang::CompilerOptionValueKind::Int, kSlangShiftKindShaderResource }},
-		{ slang::CompilerOptionName::VulkanBindShiftAll,	{ slang::CompilerOptionValueKind::Int, kSlangShiftKindUnorderedAccess }},
-		{ slang::CompilerOptionName::VulkanBindShiftAll,	{ slang::CompilerOptionValueKind::Int, kSlangShiftKindSampler }}
+		{ slang::CompilerOptionName::ForceCLayout,			{ slang::CompilerOptionValueKind::Int, 1 }},
+		{ slang::CompilerOptionName::VulkanBindShiftAll,	{ slang::CompilerOptionValueKind::Int, kSlangShiftKindShaderResource, 32 }},
+		{ slang::CompilerOptionName::VulkanBindShiftAll,	{ slang::CompilerOptionValueKind::Int, kSlangShiftKindUnorderedAccess, 64 }},
+		{ slang::CompilerOptionName::VulkanBindShiftAll,	{ slang::CompilerOptionValueKind::Int, kSlangShiftKindSampler, 96 }}
 	});
 
 	static constexpr std::array kSearchPaths = std::to_array<const char*>
 	({
-		"Resources/Shaders"
+		"Resources/Shaders",
+		"Resources/Shaders/Modules"
 	});
 
 	const slang::TargetDesc targetDescription =

@@ -32,18 +32,14 @@ private:
 	uint32_t m_Handle;
 };
 
-namespace std
+template <>
+struct std::hash<AkDelegateHandle>
 {
-	template <>
-	struct hash<AkDelegateHandle>
+	size_t operator()(const AkDelegateHandle& handle) const
 	{
-		size_t operator()(const AkDelegateHandle& handle) const
-		{
-			std::hash<uint32_t> hasher;
-			return hasher(handle);
-		}
-	};
-}
+		return static_cast<uint32_t>(handle);
+	}
+};
 
 class AkSimpleDelegate
 {

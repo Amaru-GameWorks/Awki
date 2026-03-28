@@ -129,6 +129,7 @@ AkTexture::AkTexture(const AkTextureDescriptor& descriptor, const vk::Image& ima
 {
 	m_FromNative = true;
 	m_Storage->image = image;
+	
 	CreateImageViews();
 }
 

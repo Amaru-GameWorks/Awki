@@ -3,6 +3,7 @@
 #include "RHI/Device.h"
 #include "RHI/Buffers/Buffer.h"
 #include "RHI/Pipeline/Shader.h"
+#include "Utilities/Hash.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -17,6 +18,7 @@ AkMaterial::AkMaterial(class AkShader* shader, const std::optional<AkRasterizerS
 {
 	if (rasterizerState.has_value())
 		m_RasterizerState = rasterizerState.value();
+	m_RasterizerState.CalculateHash();
 
 	const vk::Device& device = AkDevice::GetDevice();
 
@@ -24,15 +26,19 @@ AkMaterial::AkMaterial(class AkShader* shader, const std::optional<AkRasterizerS
 	const vk::DescriptorPoolCreateInfo descPoolCreateInfo = { .maxSets = 1, .poolSizeCount = 1, .pPoolSizes = &poolSize };
 	m_Storage->pool = device.createDescriptorPool(descPoolCreateInfo);
 
-	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = 
-	{ 
-		.descriptorPool = m_Storage->pool, 
-		.descriptorSetCount = 1, 
+	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo =
+	{
+		.descriptorPool = m_Storage->pool,
+		.descriptorSetCount = 1,
 		.pSetLayouts = &m_Shader->GetDescriptorSetLayout()
 	};
 
 	std::vector<vk::DescriptorSet> allocatedSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
-	m_Storage->descriptorSet = allocatedSets[0];
+	if(!allocatedSets.empty())
+		m_Storage->descriptorSet = allocatedSets[0];
+
+	m_Hash = Hash(m_RasterizerState);
+	HashCombine(m_Hash, m_Shader);
 }
 
 AkMaterial::~AkMaterial()
@@ -52,12 +58,12 @@ void AkMaterial::SetConstantBuffer(AkConstantBuffer* buffer, const uint32_t bind
 		.range = VK_WHOLE_SIZE
 	};
 
-	const vk::WriteDescriptorSet writeDescriptorSet = 
-	{ 
-		.dstSet = m_Storage->descriptorSet, 
-		.dstBinding = binding, 
-		.descriptorCount = 1, 
-		.descriptorType = vk::DescriptorType::eUniformBuffer, 
+	const vk::WriteDescriptorSet writeDescriptorSet =
+	{
+		.dstSet = m_Storage->descriptorSet,
+		.dstBinding = binding,
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eUniformBuffer,
 		.pBufferInfo = &bufferUpdateInfo
 	};
 

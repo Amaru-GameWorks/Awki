@@ -43,6 +43,9 @@
 # Build folder
 /Build
 
+# Library folder
+/Library
+
 # CLion settings
 /.idea
 

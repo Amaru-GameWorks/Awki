@@ -1,11 +1,13 @@
 #include "CommandBuffer.h"
 #include "Core/Assert.h"
 #include "RHI/Device.h"
-#include "RHI/Textures/Texture.h"
-#include "RHI/Textures/RenderTarget.h"
 #include "RHI/Pipeline/Shader.h"
+#include "RHI/Textures/Texture.h"
 #include "RHI/Pipeline/Material.h"
+#include "RHI/Textures/RenderTarget.h"
 #include "RHI/Pipeline/PipelineStateObject.h"
+#include "RHI/Pipeline/PipelineStateManager.h"
+#include "RHI/Pipeline/BindlessResourcesManager.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -167,6 +169,7 @@ void AkCommandBuffer::End()
 
 void AkCommandBuffer::BeginRendering(AkRenderTarget* renderTarget)
 {
+	m_CurrentRenderTarget = renderTarget;
 	const AkTextureDescriptor& descriptor = renderTarget->GetValidTextureDescriptor();
 	const std::vector<vk::RenderingAttachmentInfo> colorAttachments = renderTarget->GetColorAttachments();
 	const std::optional<vk::RenderingAttachmentInfo> depthAttachment = renderTarget->GetDepthStencilAttachment();
@@ -212,15 +215,26 @@ void AkCommandBuffer::BeginRendering(AkRenderTarget* renderTarget)
 
 void AkCommandBuffer::EndRendering()
 {
+	m_CurrentRenderTarget = nullptr;
 	m_Storage->commandBuffer.endRendering();
 }
 
-void AkCommandBuffer::DrawMaterialNoMesh(AkMaterial* material, AkPipelineStateObject* pso, const uint32_t vertCount)
+void AkCommandBuffer::DrawPrimitive(AkMaterial* material, const AkPrimitiveType primitiveType, const uint32_t vertexCount)
 {
 	AkShader* shader = material->GetShader();
+	AkPipelineStateObject* pso = AkPipelineStateManager::GetPipelineStateObject(material, m_CurrentRenderTarget, primitiveType);
+
+	const std::vector<vk::DescriptorSet> descriptorSets =
+	{
+		AkBindlessResourcesManager::GetBuffersDescriptorSet(),
+		AkBindlessResourcesManager::GetTexturesDescriptorSet(),
+		AkBindlessResourcesManager::GetSamplersDescriptorSet(),
+		material->GetDescriptorSet()
+	};
+
 	m_Storage->commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pso->GetPipeline());
-	m_Storage->commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, shader->GetPipelineLayout(), 0, 1, &material->GetDescriptorSet(), 0, nullptr);
-	m_Storage->commandBuffer.draw(vertCount, 1, 0, 0);
+	m_Storage->commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, shader->GetPipelineLayout(), 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+	m_Storage->commandBuffer.draw(vertexCount, 1, 0, 0);
 }
 
 void AkCommandBuffer::TransitionRenderTargetColorAttachments(AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState)
