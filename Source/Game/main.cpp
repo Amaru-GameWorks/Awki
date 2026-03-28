@@ -6,44 +6,52 @@
 #include <RHI/Pipeline/Shader.h>
 #include <RHI/Pipeline/Material.h>
 #include <RHI/Textures/RenderTarget.h>
-#include <RHI/Pipeline/RasterizerState.h>
 #include <RHI/CommandBuffers/CommandBuffer.h>
-#include <RHI/Pipeline/PipelineStateObject.h>
 #include <Utilities/Shaders/ShaderCompiler.h>
 
 #include <print>
 #include <glm/vec3.hpp>
+#include <glm/gtc/type_aligned.hpp>
 
-struct UnlitMaterial
+struct RandomData
 {
-	glm::vec3 color;
+	glm::packed_vec3 color1 = glm::vec3(1.f, 0.f, 1.f);
+	glm::packed_vec3 color2 = glm::vec3(1.f, 1.f, 0.f);
+	glm::packed_vec3 color3 = glm::vec3(0.f, 0.f, 1.f);
+	glm::packed_vec3 color4 = glm::vec3(1.f, 0.f, 1.f);
+};
+
+struct alignas(16) UnlitMaterial
+{
+	glm::packed_vec3 color;
+	uint32_t bufferHandle;
+	uint32_t textureHandle;
 };
 
 Awki* m_Engine = nullptr;
 AkShader* m_Shader = nullptr;
 AkMaterial* m_Material = nullptr;
-AkPipelineStateObject* m_PSO = nullptr;
 AkConstantBuffer* m_UnlitConstantBuffer = nullptr;
+AkStructuredBuffer* m_RandomDataBuffer = nullptr;
 
 AkShaderCompiler m_ShaderCompiler = {};
-UnlitMaterial m_ColorBuffer = { .color = glm::vec3(0.f, 1.f, 0.7f) };
+UnlitMaterial m_ColorBuffer = { .color = glm::packed_vec3(0.f, 1.f, 0.7f), .bufferHandle = 0, .textureHandle = 15 };
+RandomData m_Random = {};
 
 static void OnEngineStart()
 {
 	try
 	{
-		AkRenderTarget* backBuffer = m_Engine->GetMainSwapchain()->GetCurrentBackBufferRenderTarget();
-		m_UnlitConstantBuffer = new AkConstantBuffer(m_ColorBuffer);
-
 		const AkShaderCompileOptions options = { .path = "Resources/Shaders/Shader.slang" };
 		AkShaderByteCode byteCode = m_ShaderCompiler.CompileShader(options);
-		
-		m_Shader = new AkShader(byteCode.GetByteCode(), byteCode.GetSize());
-		
-		m_Material = new AkMaterial(m_Shader);
-		m_Material->SetConstantBuffer(m_UnlitConstantBuffer, 0);
 
-		m_PSO = new AkPipelineStateObject(m_Material, backBuffer);
+		m_Shader = new AkShader(byteCode);
+		m_Material = new AkMaterial(m_Shader);
+		
+		m_RandomDataBuffer = new AkStructuredBuffer(m_Random, AkBufferFlags_CPU_ACCESS);
+		m_UnlitConstantBuffer = new AkConstantBuffer(m_ColorBuffer);
+
+		m_Material->SetConstantBuffer(m_UnlitConstantBuffer, 0);
 	}
 	catch (const std::exception& exception)
 	{
@@ -57,7 +65,7 @@ static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBu
 	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::UNDEFINED, AkResourceState::RENDER_TARGET);
 
 	commandBuffer->BeginRendering(backBuffer);
-	commandBuffer->DrawMaterialNoMesh(m_Material, m_PSO, 3);
+	commandBuffer->DrawPrimitive(m_Material, AkPrimitiveType::TRIANGLES, 3);
 	commandBuffer->EndRendering();
 
 	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::RENDER_TARGET, AkResourceState::PRESENT);
@@ -65,9 +73,9 @@ static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBu
 
 static void OnEngineShutdown()
 {
-	delete m_PSO;
 	delete m_Shader;
 	delete m_Material;
+	delete m_RandomDataBuffer;
 	delete m_UnlitConstantBuffer;
 }
 

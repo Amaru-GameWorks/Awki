@@ -1,6 +1,9 @@
 #include "Shader.h"
 #include "RHI/Device.h"
+#include "Utilities/Shaders/ShaderCompiler.h"
+#include "RHI/Pipeline/BindlessResourcesManager.h"
 
+#include <vector>
 #include <vulkan/vulkan.hpp>
 
 struct AkShaderStorage
@@ -10,37 +13,42 @@ struct AkShaderStorage
 	vk::DescriptorSetLayout descriptorLayout;
 };
 
-AkShader::AkShader(const uint8_t* byteCode, size_t size)
+AkShader::AkShader(const AkShaderByteCode& byteCode)
 {
 	const vk::Device& device = AkDevice::GetDevice();
 
 	vk::ShaderModuleCreateInfo moduleCreateInfo =
 	{
-		.codeSize = size,
-		.pCode = reinterpret_cast<const uint32_t*>(byteCode),
+		.codeSize = byteCode.GetSize(),
+		.pCode = reinterpret_cast<const uint32_t*>(byteCode.GetByteCode()),
 	};
-
 	m_Storage->shaderModule = device.createShaderModule(moduleCreateInfo);
 
-	vk::DescriptorSetLayoutBinding descriptorLayoutBinding =
+	const vk::DescriptorSetLayoutBinding descriptorLayoutBinding =
 	{
 		.descriptorType = vk::DescriptorType::eUniformBuffer,
 		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+		.stageFlags = vk::ShaderStageFlagBits::eAll
 	};
-
 	const vk::DescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo =
 	{
 		.bindingCount = 1,
 		.pBindings = &descriptorLayoutBinding
 	};
-
 	m_Storage->descriptorLayout = device.createDescriptorSetLayout(descriptorLayoutCreateInfo);
+
+	const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts =
+	{
+		AkBindlessResourcesManager::GetBuffersDescriptorSetLayout(),
+		AkBindlessResourcesManager::GetTexturesDescriptorSetLayout(),
+		AkBindlessResourcesManager::GetSamplersDescriptorSetLayout(),
+		m_Storage->descriptorLayout
+	};
 
 	const vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo =
 	{
-		.setLayoutCount = 1,
-		.pSetLayouts = &m_Storage->descriptorLayout
+		.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size()),
+		.pSetLayouts = descriptorSetLayouts.data()
 	};
 	m_Storage->pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
 }

@@ -1,5 +1,6 @@
 #include "Buffer.h"
 #include "RHI/Device.h"
+#include "RHI/Pipeline/BindlessResourcesManager.h"
 
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -8,7 +9,7 @@ constexpr vk::BufferUsageFlags GetUsageFlags(const AkBufferFlags flags)
 {
 	vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eShaderDeviceAddress;
 
-	if (flags & (AkBufferFlags_STRUCTURED | AkBufferFlags_RAW_VIEW | AkBufferFlags_APPEND_CONSUME))
+	if (flags & (AkBufferFlags_STRUCTURED))
 		usageFlags |= vk::BufferUsageFlagBits::eStorageBuffer;
 
 	if (flags & AkBufferFlags_CONSTANT)
@@ -53,6 +54,7 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 
 	const bool cpuAccess = m_Descriptor.flags & AkBufferFlags_CPU_ACCESS;
 	const bool fallbackToDevice = m_Descriptor.flags & AkBufferFlags_NO_SYSTEM_RAM;
+	const bool shouldCopyData = data && (m_Descriptor.flags & AkBufferFlags_COPY_DESTINATION);
 	
 	VmaAllocationInfo allocationInfo = {};
 	VmaAllocationCreateInfo allocationCreateInfo = {};
@@ -96,15 +98,22 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 			result = vmaMapMemory(allocator, m_Storage->allocation, reinterpret_cast<void**>(&m_MappedDataPointer));
 			vk::detail::resultCheck(vk::Result(result), "vmaMapMemory");
 	
-			if (data && (m_Descriptor.flags & AkBufferFlags_COPY_DESTINATION))
+			if (shouldCopyData)
 				memcpy(m_MappedDataPointer, data, m_Descriptor.size);
 		}
 		else
 		{
 			//Should use a normal staging buffer to issue a copy of the data since it failed to allocate in host visible memory and allocation is in device local memory
-			//if (data && !(m_Descriptor.flags & AkBufferFlags_COPY_DESTINATION))
+			//if (shouldCopyData)
 		}
 	}
+	else if (shouldCopyData)
+	{
+
+	}
+
+	if (m_Descriptor.flags & (AkBufferFlags_STRUCTURED | AkBufferFlags_VERTEX | AkBufferFlags_INDIRECT))
+		AkBindlessResourcesManager::AddBuffer(this);
 }
 
 AkBuffer::~AkBuffer()

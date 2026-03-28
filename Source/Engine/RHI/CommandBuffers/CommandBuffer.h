@@ -1,6 +1,7 @@
 #pragma once
 #include "RHI/ResourceStates.h"
 #include "Utilities/ForwardStorage.h"
+#include "RHI/Pipeline/RasterizerState.h"
 
 #include <glm/vec4.hpp>
 
@@ -24,7 +25,7 @@ public:
 	void BeginRendering(class AkRenderTarget* renderTarget);
 	void EndRendering();
 
-	void DrawMaterialNoMesh(class AkMaterial* material, class AkPipelineStateObject* pso, const uint32_t vertCount);
+	void DrawPrimitive(class AkMaterial* material, const AkPrimitiveType primitiveType, const uint32_t vertexCount);
 
 	void TransitionRenderTargetColorAttachments(class AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState);
 	void TransitionRenderTargetDepthAttachment(class AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState);
@@ -34,5 +35,6 @@ public:
 	vk::CommandBuffer& GetBuffer();
 
 private:
+	class AkRenderTarget* m_CurrentRenderTarget = nullptr;
 	ForwardStorage<struct AkCommandBufferStorage, 16> m_Storage;
 };

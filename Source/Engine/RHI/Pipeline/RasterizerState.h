@@ -1,6 +1,20 @@
-#pragma once 
+#pragma once
+#include "Utilities/Hash.h"
+
 #include <vector>
+#include <functional>
 #include <type_traits>
+
+enum class AkPrimitiveType : uint8_t
+{
+	POINTS,
+	LINES,
+	LINE_STRIP,
+	TRIANGLES,
+	TRIANGLE_STRIP,
+	TRIANGLE_FAN,
+	PATCH_LIST
+};
 
 enum class AkFillMode : uint8_t
 {
@@ -77,10 +91,34 @@ struct AkBlendFactors
 	AkBlendingFactor destinationAlpha = AkBlendingFactor::ONE_MINUS_SRC_ALPHA;
 };
 
+template <>
+struct std::hash<AkBlendFactors>
+{
+	size_t operator()(const AkBlendFactors& blendFactors) const
+	{
+		size_t hash = Hash(blendFactors.sourceColor);
+		HashCombine(hash, blendFactors.destinationColor);
+		HashCombine(hash, blendFactors.sourceAlpha);
+		HashCombine(hash, blendFactors.destinationAlpha);
+		return hash;
+	}
+};
+
 struct AkBlendOperations
 {
 	AkBlendingOperation color = AkBlendingOperation::ADD;
 	AkBlendingOperation alpha = AkBlendingOperation::ADD;
+};
+
+template <>
+struct std::hash<AkBlendOperations>
+{
+	size_t operator()(const AkBlendOperations& blendOperations) const
+	{
+		size_t hash = Hash(blendOperations.color);
+		HashCombine(hash, blendOperations.alpha);
+		return hash;
+	}
 };
 
 struct AkBlendState
@@ -97,14 +135,56 @@ struct AkBlendState
 	};
 };
 
+template <>
+struct std::hash<AkBlendState>
+{
+	size_t operator()(const AkBlendState& blendState) const
+	{
+		size_t hash = Hash(blendState.blendEnabled);
+		HashCombine(hash, blendState.blendFactors);
+		HashCombine(hash, blendState.blendOperations);
+		HashCombine(hash, blendState.colorMask);
+		return hash;
+	}
+};
+
 struct AkRasterizerState
 {
 	float lineWidth = 1.f;
 	bool depthWrite = true;
-	std::vector<AkBlendState> blendStates = {};
 
 	AkFillMode fillMode = AkFillMode::SOLID;
 	AkDepthTest depthTest = AkDepthTest::LEQUAL;
 	AkFaceCulling faceCulling = AkFaceCulling::BACK;
 	AkWindingOrder windingOrder = AkWindingOrder::COUNTER_CLOCK_WISE;
+	
+	std::vector<AkBlendState> blendStates = {};
+
+	size_t GetHash() const { return m_Hash; }
+
+private:
+	friend class AkMaterial;
+
+	size_t m_Hash = 0;
+	void CalculateHash()
+	{
+		m_Hash = Hash(lineWidth);
+		HashCombine(m_Hash, depthWrite);
+		HashCombine(m_Hash, fillMode);
+		HashCombine(m_Hash, depthTest);
+		HashCombine(m_Hash, faceCulling);
+		HashCombine(m_Hash, windingOrder);
+
+		for(const AkBlendState& blendState : blendStates)
+			HashCombine(m_Hash, blendState);
+	}
+};
+
+template <>
+struct std::hash<AkRasterizerState>
+{
+	size_t operator()(const AkRasterizerState& state) const
+	{
+		return state.GetHash();
+	}
 };

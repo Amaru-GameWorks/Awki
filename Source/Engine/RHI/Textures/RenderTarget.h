@@ -5,8 +5,8 @@
 #include <glm/vec4.hpp>
 
 #include <vector>
-#include <memory>
 #include <optional>
+#include <functional>
 
 namespace vk
 {
@@ -74,8 +74,11 @@ public:
 
 	const std::vector<struct vk::RenderingAttachmentInfo>& GetColorAttachments() const;
 	const std::optional<struct vk::RenderingAttachmentInfo>& GetDepthStencilAttachment() const;
+	
+	size_t GetHash() const { return m_Hash; }
 
 private:
+	size_t m_Hash = 0;
 	ForwardStorage<struct AkRenderTargetStorage, 112> m_Storage;
 	
 	std::vector<AkRenderTargetAttachmentInfo> m_ColorAttachments = {};

@@ -25,9 +25,7 @@ enum AkBufferFlagBits : uint16_t
 	AkBufferFlags_VERTEX					= 1 << 6,
 	AkBufferFlags_CONSTANT					= 1 << 7,
 	AkBufferFlags_INDIRECT					= 1 << 8,
-	AkBufferFlags_STRUCTURED				= 1 << 9,
-	AkBufferFlags_RAW_VIEW					= 1 << 10,
-	AkBufferFlags_APPEND_CONSUME			= 1 << 11,
+	AkBufferFlags_STRUCTURED				= 1 << 9
 };
 using AkBufferFlags = std::underlying_type_t<AkBufferFlagBits>;
 
@@ -39,16 +37,22 @@ struct AkBufferDescriptor
 
 class AkBuffer
 {
+	friend class AkBindlessResourcesManager;
+
 public:
 	AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data = nullptr);
 	~AkBuffer();
 
 	uint8_t* GetMappedDataPointer() const { return m_MappedDataPointer; }
 	const AkBufferDescriptor& GetDescriptor() const { return m_Descriptor; }
+	int32_t GetBindlessIndex() const { return m_BindlessIndex; }
+	
 	vk::DeviceAddress GetDeviceAddress() const;
 	const vk::Buffer& GetBuffer() const;
 
 private:
+
+	int32_t m_BindlessIndex = -1;
 	AkBufferDescriptor m_Descriptor = {};
 	uint8_t* m_MappedDataPointer = nullptr;
 	ForwardStorage<struct AkBufferStorage, 24> m_Storage;
@@ -57,13 +61,38 @@ private:
 class AkConstantBuffer : public AkBuffer
 {
 public:
-	AkConstantBuffer(const size_t size, uint8_t* data)
-		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinConstantBufferAlignment()), AkBufferFlags_CONSTANT | AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_DESTINATION }, data)
+	AkConstantBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinConstantBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_CONSTANT | AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
-	requires (alignof(T) == 16)
-	AkConstantBuffer(T& data) 
-		: AkConstantBuffer(sizeof(T), reinterpret_cast<uint8_t*>(&data))
+	AkConstantBuffer(T& data, AkBufferFlagBits extraFlags = {})
+		: AkConstantBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinConstantBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
+	{ }
+};
+
+class AkStructuredBuffer : public AkBuffer
+{
+public:
+	AkStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	{ }
+
+	template<typename T>
+	AkStructuredBuffer(T& data, AkBufferFlagBits extraFlags = {})
+		: AkStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
+	{ }
+};
+
+class AkRWStructuredBuffer : public AkBuffer
+{
+public:
+	AkRWStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_ALLOW_UNORDERED_ACCESS | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	{ }
+
+	template<typename T>
+	AkRWStructuredBuffer(T& data, AkBufferFlagBits extraFlags = {})
+		: AkRWStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
 	{ }
 };

@@ -21,7 +21,10 @@ public:
 	const AkRasterizerState& GetRasterizerState() const { return m_RasterizerState; }
 	const vk::DescriptorSet& GetDescriptorSet() const;
 
+	size_t GetHash() const { return m_Hash; }
+
 private:
+	size_t m_Hash = 0;
 	ForwardStorage<struct AkMaterialStorage, 16> m_Storage;
 	
 	class AkShader* m_Shader = nullptr;

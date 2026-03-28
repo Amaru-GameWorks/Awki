@@ -11,7 +11,7 @@ namespace vk
 class AkShader
 {
 public:
-	AkShader(const uint8_t* byteCode, size_t size);
+	AkShader(const class AkShaderByteCode& byteCode);
 	~AkShader();
 
 	const vk::ShaderModule& GetModule() const;

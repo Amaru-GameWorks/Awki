@@ -204,9 +204,7 @@ void AkEvents::PollEvents()
 
 void AkEvents::TriggerQuit()
 {
-	SDL_Event event;
-	event.type = SDL_EVENT_QUIT;
-	SDL_PushEvent(&event);
+	m_ShouldClose = true;
 }
 
 bool AkEvents::ShouldClose()

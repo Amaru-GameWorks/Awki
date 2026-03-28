@@ -1,5 +1,6 @@
 #pragma once
 #include "Utilities/ForwardStorage.h"
+#include "RHI/Pipeline/RasterizerState.h"
 
 namespace vk
 {
@@ -9,7 +10,7 @@ namespace vk
 class AkPipelineStateObject
 {
 public:
-	AkPipelineStateObject(class AkMaterial* material, class AkRenderTarget* renderTarget);
+	AkPipelineStateObject(class AkMaterial* material, const AkPrimitiveType primitiveType, class AkRenderTarget* renderTarget);
 	~AkPipelineStateObject();
 
 	const vk::Pipeline& GetPipeline() const;
