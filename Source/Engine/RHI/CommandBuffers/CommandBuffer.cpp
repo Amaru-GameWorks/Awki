@@ -1,6 +1,7 @@
 #include "CommandBuffer.h"
 #include "Core/Assert.h"
 #include "RHI/Device.h"
+#include "RHI/Buffers/Buffer.h"
 #include "RHI/Pipeline/Shader.h"
 #include "RHI/Textures/Texture.h"
 #include "RHI/Pipeline/Material.h"
@@ -312,6 +313,134 @@ void AkCommandBuffer::TransitionTexture(AkTexture* texture, const AkResourceStat
 	};
 
 	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
+}
+
+void AkCommandBuffer::TransitionBuffer(AkBuffer* buffer, const AkResourceState sourceState, const AkResourceState destinationState)
+{
+	const vk::BufferMemoryBarrier2 bufferMemoryBarrier =
+	{
+		.srcStageMask = GetPipelineStageFlags(sourceState),
+		.srcAccessMask = GetAccessMask(sourceState),
+		.dstStageMask = GetPipelineStageFlags(destinationState),
+		.dstAccessMask = GetAccessMask(destinationState),
+		.buffer = buffer->GetBuffer(),
+		.offset = 0,
+		.size = VK_WHOLE_SIZE
+	};
+
+	const vk::DependencyInfo barrierDependencyInfo =
+	{
+		.bufferMemoryBarrierCount = 1,
+		.pBufferMemoryBarriers = &bufferMemoryBarrier
+	};
+
+	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
+}
+
+void AkCommandBuffer::TransitionResources(const std::vector<class AkBuffer*>& buffers, const std::vector<class AkTexture*>& textures, const AkResourceState sourceState, const AkResourceState destinationState)
+{
+	std::vector<vk::BufferMemoryBarrier2> bufferBarriers = {};
+	bufferBarriers.reserve(buffers.size());
+
+	std::vector<vk::ImageMemoryBarrier2> imageBarriers = {};
+	imageBarriers.reserve(textures.size());
+
+	const vk::PipelineStageFlags2 sourceStageFlags = GetPipelineStageFlags(sourceState);
+	const vk::AccessFlags2 sourceAccessMask = GetAccessMask(sourceState);
+
+	const vk::PipelineStageFlags2 destinationStageFlags = GetPipelineStageFlags(destinationState);
+	const vk::AccessFlags2 destinationAccessMask = GetAccessMask(destinationState);
+
+	const vk::ImageLayout sourceImageLayout = GetImageLayout(sourceState);
+	const vk::ImageLayout destinationImageLayout = GetImageLayout(destinationState);
+
+	for (AkBuffer* buffer : buffers)
+	{
+		vk::BufferMemoryBarrier2& bufferMemoryBarrier = bufferBarriers.emplace_back();
+		bufferMemoryBarrier.srcStageMask = sourceStageFlags;
+		bufferMemoryBarrier.srcAccessMask = sourceAccessMask;
+		bufferMemoryBarrier.dstStageMask = destinationStageFlags;
+		bufferMemoryBarrier.dstAccessMask = destinationAccessMask;
+		bufferMemoryBarrier.buffer = buffer->GetBuffer();
+		bufferMemoryBarrier.offset = 0;
+		bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	}
+
+	for (AkTexture* texture : textures)
+	{
+		const AkTextureDescriptor& descriptor = texture->GetDescriptor();
+		vk::ImageMemoryBarrier2& imageMemoryBarrier = imageBarriers.emplace_back();
+		imageMemoryBarrier.srcStageMask = sourceStageFlags;
+		imageMemoryBarrier.srcAccessMask = sourceAccessMask;
+		imageMemoryBarrier.dstStageMask = destinationStageFlags;
+		imageMemoryBarrier.dstAccessMask = destinationAccessMask;
+		imageMemoryBarrier.oldLayout = sourceImageLayout;
+		imageMemoryBarrier.newLayout = destinationImageLayout;
+		imageMemoryBarrier.image = texture->GetImage();
+		imageMemoryBarrier.subresourceRange =
+		{
+			.aspectMask = GetAspectMask(descriptor.format),
+			.levelCount = descriptor.mips,
+			.layerCount = descriptor.slices
+		};
+	}
+
+	vk::DependencyInfo barrierDependencyInfo = {};
+	if (!bufferBarriers.empty())
+	{
+		barrierDependencyInfo.bufferMemoryBarrierCount = static_cast<uint32_t>(bufferBarriers.size());
+		barrierDependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+	}
+
+	if (!imageBarriers.empty())
+	{
+		barrierDependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(imageBarriers.size());
+		barrierDependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+	}
+
+	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
+}
+
+void AkCommandBuffer::CopyBufferToBuffer(AkBuffer* source, AkBuffer* destination, const size_t size, const size_t sourceOffset, const size_t destinationOffset)
+{
+	const vk::BufferCopy bufferCopyInfo = 
+	{
+		.srcOffset = sourceOffset,
+		.dstOffset = destinationOffset,
+		.size = size,
+	};
+
+	m_Storage->commandBuffer.copyBuffer(source->GetBuffer(), destination->GetBuffer(), 1, &bufferCopyInfo);
+}
+
+void AkCommandBuffer::CopyBufferToTexture(AkBuffer* source, AkTexture* destination, const size_t sourceOffset)
+{
+	const AkTextureDescriptor& descriptor = destination->GetDescriptor();
+	const std::vector<AkMipInfo>& mipsInfo = destination->GetMipsInfo();
+	const bool isTex3D = descriptor.type == AkTextureType::TEXTURE_3D;
+
+	std::vector<vk::BufferImageCopy> copyRegions;
+	copyRegions.resize(mipsInfo.size(), {});
+
+	const size_t sliceSize = destination->GetSize() / descriptor.slices;
+	for (uint32_t slice = 0; slice < descriptor.slices; ++slice)
+	{
+		const uint32_t sliceMipOffset = slice * descriptor.mips;
+		for (uint32_t mip = 0; mip < descriptor.mips; ++mip)
+		{
+			const uint32_t index = sliceMipOffset + mip;
+			copyRegions[index].imageSubresource.aspectMask = GetAspectMask(descriptor.format);
+			copyRegions[index].imageSubresource.mipLevel = mip;
+			copyRegions[index].imageSubresource.layerCount = 1;
+			copyRegions[index].imageSubresource.baseArrayLayer = slice;
+			copyRegions[index].imageExtent.width = descriptor.width >> mip;
+			copyRegions[index].imageExtent.height = descriptor.height >> mip;
+			copyRegions[index].imageExtent.depth = isTex3D ? descriptor.depth >> mip : 1;
+			copyRegions[index].bufferOffset = sourceOffset + (sliceSize * slice) + mipsInfo[mip].offset;
+		}
+	}
+
+	m_Storage->commandBuffer.copyBufferToImage(source->GetBuffer(), destination->GetImage(), vk::ImageLayout::eTransferDstOptimal, static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
 }
 
 void AkCommandBuffer::ClearColor(AkTexture* texture, const AkResourceState sourceState, const glm::vec4& color)

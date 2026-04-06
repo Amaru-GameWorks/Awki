@@ -30,6 +30,12 @@ public:
 	void TransitionRenderTargetColorAttachments(class AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState);
 	void TransitionRenderTargetDepthAttachment(class AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState);
 	void TransitionTexture(class AkTexture* texture, const AkResourceState sourceState, const AkResourceState destinationState);
+	void TransitionBuffer(class AkBuffer* buffer, const AkResourceState sourceState, const AkResourceState destinationState);
+	void TransitionResources(const std::vector<class AkBuffer*>& buffers, const std::vector<class AkTexture*>& textures, const AkResourceState sourceState, const AkResourceState destinationState);
+	
+	void CopyBufferToBuffer(class AkBuffer* source, class AkBuffer* destination, const size_t size, const size_t sourceOffset = 0, const size_t destinationOffset = 0);
+	void CopyBufferToTexture(class AkBuffer* source, class AkTexture* destination, const size_t sourceOffset = 0);
+	
 	void ClearColor(class AkTexture* texture, const AkResourceState sourceState, const glm::vec4& color);
 
 	vk::CommandBuffer& GetBuffer();

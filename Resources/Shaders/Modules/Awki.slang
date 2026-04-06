@@ -7,7 +7,7 @@ RWTexture2D RWBindlessTextures2d[] : register(u0, space1);
 SamplerState BindlessSamplers[] : register(s0, space2);
 
 typealias BBuffer = uint;
-typealias BTexture = int;
+typealias BTexture = uint;
 
 struct BufferHandle<T>
 {

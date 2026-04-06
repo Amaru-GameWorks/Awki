@@ -17,6 +17,7 @@ public:
 	static void Deinitialize();
 
 	static void AddBuffer(class AkBuffer* buffer);
+	static void AddTexture(class AkTexture* texture);
 
 	static const vk::DescriptorSet& GetBuffersDescriptorSet();
 	static const vk::DescriptorSet& GetTexturesDescriptorSet();
@@ -29,4 +30,7 @@ public:
 private:
 	static inline std::atomic_int16_t sBuffersCount = 0;
 	static inline std::queue<int16_t> sBuffersFreeList = {};
+
+	static inline std::atomic_int16_t sTexturesCount = 0;
+	static inline std::queue<int16_t> sTexturesFreeList = {};
 };

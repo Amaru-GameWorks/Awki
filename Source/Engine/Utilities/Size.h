@@ -1,44 +1,41 @@
 #pragma once
 #include <sstream>
+#include <iomanip>
 
-template<typename T>
-constexpr inline T SizeKB(const T value)
+constexpr inline size_t SizeKB(const size_t value)
 {
-	return value * static_cast<T>(1024);
+	return value * static_cast<size_t>(1024);
 }
 
-template<typename T>
-constexpr inline T SizeMB(const T value)
+constexpr inline size_t SizeMB(const size_t value)
 {
-	return SizeKB<T>(value) * static_cast<T>(1024);
+	return SizeKB(value) * static_cast<size_t>(1024);
 }
 
-template<typename T>
-constexpr inline T SizeGB(const T value)
+constexpr inline size_t SizeGB(const size_t value)
 {
-	return SizeMB<T>(value) * static_cast<T>(1024);
+	return SizeMB(value) * static_cast<size_t>(1024);
 }
 
-template<typename T>
-static std::string ByteSizeToShortString(const T bytes)
+std::string ByteSizeToShortString(const size_t bytes)
 {
 	std::stringstream stringStream = {};
 	stringStream << std::fixed;
 	stringStream << std::setprecision(2);
 
-	if (bytes >= SizeGB<T>(1))
+	if (bytes >= SizeGB(1))
 	{
-		double sizeInGB = bytes / SizeGB<double>(1);
+		double sizeInGB = bytes / static_cast<double>(SizeGB(1));
 		stringStream << sizeInGB << " GB";
 	}
-	else if (bytes >= SizeMB<T>(1))
+	else if (bytes >= SizeMB(1))
 	{
-		double sizeInMB = bytes / SizeMB<double>(1);
+		double sizeInMB = bytes / static_cast<double>(SizeMB(1));
 		stringStream << sizeInMB << " MB";
 	}
-	else if (bytes >= SizeKB<T>(1))
+	else if (bytes >= SizeKB(1))
 	{
-		double sizeInKB = bytes / SizeKB<double>(1);
+		double sizeInKB = bytes / static_cast<double>(SizeKB(1));
 		stringStream << sizeInKB << " KB";
 	}
 	else

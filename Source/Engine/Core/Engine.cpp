@@ -5,6 +5,7 @@
 #include "Platform/Window.h"
 #include "Platform/Events.h"
 
+#include "RHI/UploadManager.h"
 #include "RHI/Pipeline/PipelineStateManager.h"
 #include "RHI/Pipeline/BindlessResourcesManager.h"
 #include "RHI/CommandBuffers/CommandBufferAllocator.h"
@@ -38,6 +39,8 @@ Awki::~Awki()
 	m_Swapchain.reset();
 	m_Window.reset();
 
+	AkUploadManager::ReleaseBuffers();
+
 	AkBindlessResourcesManager::Deinitialize();
 	AkPipelineStateManager::Deinitialize();
 	AkDevice::Deinitialize();
@@ -57,12 +60,18 @@ void Awki::Run()
 		{
 			AkCommandBuffer* currentCommandBuffer = commandBuffers[m_Swapchain->GetCurrentFrameIndex()];
 			AkRenderTarget* currentBackBuffer = m_Swapchain->GetCurrentBackBufferRenderTarget();
-			
+
 			currentCommandBuffer->Begin();
 			m_OnFrameRender.Broadcast(currentCommandBuffer, currentBackBuffer);
 			currentCommandBuffer->End();
-			
-			m_Swapchain->Present({ currentCommandBuffer });
+
+			if (AkUploadManager::HasPendingUploads())
+			{
+				AkUploadManager::FillCommandBuffer();
+				m_Swapchain->Present({ AkUploadManager::GetCommandBuffer(), currentCommandBuffer });
+			}
+			else
+				m_Swapchain->Present({ currentCommandBuffer });
 		}
 	}
 

@@ -58,6 +58,14 @@ private:
 	ForwardStorage<struct AkBufferStorage, 24> m_Storage;
 };
 
+class AkStagingBuffer : public AkBuffer
+{
+public:
+	AkStagingBuffer(const size_t size)
+		: AkBuffer({ size, AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_SOURCE }, nullptr)
+	{ }
+};
+
 class AkConstantBuffer : public AkBuffer
 {
 public:

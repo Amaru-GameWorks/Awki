@@ -35,16 +35,16 @@ float4 main(VSOutput input)
     BufferHandle<float3> buffer = { gMaterial.buffer };
     TextureHandle<RWTexture2D> texture = { gMaterial.texture };
 
-    //Operator overload to get the actual texture object
-   // float4 a = gMaterial.texture().Load(int2(0,0));
+    // Operator() overload to get the actual texture object
+    texture().Store(int2(0, 0), float4(0.f, 0.f, 1.f, 1.f));
+    float4 a = texture().Load(int2(0, 0));
 
-    //Accessor operators to Get/Set values in buffers
-    //gMaterial.buffer.Set(0, float3(a.x, 0.f, 0.f));
-    //gMaterial.buffer.Set(1, float3(1.f, 1.f, 1.f));
-    //gMaterial.buffer.Set(2, float3(1.f, 0.f, 1.f));
-    //gMaterial.buffer.Set(3, float3(0.f, 1.f, 0.f));
+    // Accessor operators to Get/Set values in buffers
+    // Can use either Get(i)/Set(i) or [i]
+    buffer[0] = float3(1.f, 0.f, 0.f);
+    // buffer[1] = float3(1.f, 1.f, 1.f);
+    // buffer[2] = float3(1.f, 0.f, 1.f);
+    // buffer[3] = float3(0.f, 1.f, 0.f);
 
-    //Can use either Get(i) or [i]
-    //Cant use [] to set since the value is implicitly const as it comes from a constant buffer but can use Set()
-    return float4(buffer[1], 1.f);
+    return float4(a.rgb + buffer[0], 1.f);
 }

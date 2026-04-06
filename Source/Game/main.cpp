@@ -4,6 +4,7 @@
 #include <Platform/Events.h>
 #include <RHI/Buffers/Buffer.h>
 #include <RHI/Pipeline/Shader.h>
+#include <RHI/Textures/Texture.h>
 #include <RHI/Pipeline/Material.h>
 #include <RHI/Textures/RenderTarget.h>
 #include <RHI/CommandBuffers/CommandBuffer.h>
@@ -16,7 +17,7 @@
 struct RandomData
 {
 	glm::packed_vec3 color1 = glm::vec3(1.f, 0.f, 1.f);
-	glm::packed_vec3 color2 = glm::vec3(1.f, 1.f, 0.f);
+	glm::packed_vec3 color2 = glm::vec3(1.f, 0.f, 0.f);
 	glm::packed_vec3 color3 = glm::vec3(0.f, 0.f, 1.f);
 	glm::packed_vec3 color4 = glm::vec3(1.f, 0.f, 1.f);
 };
@@ -30,6 +31,7 @@ struct alignas(16) UnlitMaterial
 
 Awki* m_Engine = nullptr;
 AkShader* m_Shader = nullptr;
+AkTexture* m_Texture = nullptr;
 AkMaterial* m_Material = nullptr;
 AkConstantBuffer* m_UnlitConstantBuffer = nullptr;
 AkStructuredBuffer* m_RandomDataBuffer = nullptr;
@@ -48,7 +50,16 @@ static void OnEngineStart()
 		m_Shader = new AkShader(byteCode);
 		m_Material = new AkMaterial(m_Shader);
 		
-		m_RandomDataBuffer = new AkStructuredBuffer(m_Random, AkBufferFlags_CPU_ACCESS);
+		m_RandomDataBuffer = new AkStructuredBuffer(m_Random);
+		
+		AkTextureDescriptor descriptor = {};
+		descriptor.flags |= AkTextureFlags_ALLOW_UNORDERED_ACCESS;
+
+		uint32_t pixel = 0xFFFFFFFF;
+		m_Texture = new AkTexture(descriptor, reinterpret_cast<uint8_t*>(&pixel));
+
+		m_ColorBuffer.bufferHandle = m_RandomDataBuffer->GetBindlessIndex();
+		m_ColorBuffer.textureHandle = m_Texture->GetBindlessIndex();
 		m_UnlitConstantBuffer = new AkConstantBuffer(m_ColorBuffer);
 
 		m_Material->SetConstantBuffer(m_UnlitConstantBuffer, 0);
@@ -75,6 +86,7 @@ static void OnEngineShutdown()
 {
 	delete m_Shader;
 	delete m_Material;
+	delete m_Texture;
 	delete m_RandomDataBuffer;
 	delete m_UnlitConstantBuffer;
 }

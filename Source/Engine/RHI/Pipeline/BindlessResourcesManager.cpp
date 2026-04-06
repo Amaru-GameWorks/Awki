@@ -2,6 +2,7 @@
 #include "RHI/Device.h"
 #include "Core/Assert.h"
 #include "RHI/Buffers/Buffer.h"
+#include "RHI/Textures/Texture.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -28,7 +29,7 @@ void AkBindlessResourcesManager::Initialize()
 		vk::DescriptorPoolSize{.type = vk::DescriptorType::eSampler, .descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources }
 	};
 
-	const vk::DescriptorPoolCreateInfo poolCreateInfo = 
+	const vk::DescriptorPoolCreateInfo poolCreateInfo =
 	{
 		.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
 		.maxSets = 3,
@@ -53,7 +54,7 @@ void AkBindlessResourcesManager::Initialize()
 			.stageFlags = vk::ShaderStageFlagBits::eAll
 		}
 	};
-	
+
 	const std::vector<vk::DescriptorSetLayoutBinding> texturesBindings =
 	{
 		{
@@ -85,7 +86,7 @@ void AkBindlessResourcesManager::Initialize()
 		.pBindingFlags = kBindingFlags.data()
 	};
 
-	const vk::DescriptorSetLayoutCreateInfo buffersSetLayoutCreateInfo = 
+	const vk::DescriptorSetLayoutCreateInfo buffersSetLayoutCreateInfo =
 	{
 		.pNext = &bindingFlagsCreateInfo,
 		.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
@@ -113,13 +114,13 @@ void AkBindlessResourcesManager::Initialize()
 	};
 	sSamplersDescriptorSetLayout = device.createDescriptorSetLayout(samplersSetLayoutCreateInfo);
 
-	const vk::DescriptorSetAllocateInfo buffersSetAllocateInfo = 
+	const vk::DescriptorSetAllocateInfo buffersSetAllocateInfo =
 	{
 		.descriptorPool = sDescriptorPool,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &sBuffersDescriptorSetLayout
 	};
-	
+
 	std::vector<vk::DescriptorSet> allocatedSets = device.allocateDescriptorSets(buffersSetAllocateInfo);
 	if (!allocatedSets.empty())
 		sBuffersDescriptorSet = allocatedSets[0];
@@ -130,7 +131,7 @@ void AkBindlessResourcesManager::Initialize()
 		.descriptorSetCount = 1,
 		.pSetLayouts = &sTexturesDescriptorSetLayout
 	};
-	
+
 	allocatedSets = device.allocateDescriptorSets(texturesSetAllocateInfo);
 	if (!allocatedSets.empty())
 		sTexturesDescriptorSet = allocatedSets[0];
@@ -168,14 +169,14 @@ void AkBindlessResourcesManager::AddBuffer(AkBuffer* buffer)
 	else
 		buffer->m_BindlessIndex = sBuffersCount.fetch_add(1);
 
-	const vk::DescriptorBufferInfo bufferInfo = 
+	const vk::DescriptorBufferInfo bufferInfo =
 	{
 		.buffer = buffer->GetBuffer(),
 		.offset = 0,
 		.range = VK_WHOLE_SIZE
 	};
-	
-	const std::vector<vk::WriteDescriptorSet> writeDescriptorSets = 
+
+	const std::vector<vk::WriteDescriptorSet> writeDescriptorSets =
 	{
 		{
 			.dstSet = sBuffersDescriptorSet,
@@ -197,6 +198,58 @@ void AkBindlessResourcesManager::AddBuffer(AkBuffer* buffer)
 
 	const vk::Device& device = AkDevice::GetDevice();
 	device.updateDescriptorSets(2, writeDescriptorSets.data(), 0, nullptr);
+}
+
+void AkBindlessResourcesManager::AddTexture(AkTexture* texture)
+{
+	AkAssert(sTexturesCount < kMaxBindlessResources, "Maximum amount of textures exceded!");
+
+	if (!sTexturesFreeList.empty())
+	{
+		texture->m_BindlessIndex = sTexturesFreeList.front();
+		sTexturesFreeList.pop();
+	}
+	else
+		texture->m_BindlessIndex = sTexturesCount.fetch_add(1);
+
+	const vk::DescriptorImageInfo readImageInfo =
+	{
+		.imageView = texture->GetImageView(),
+		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+	};
+
+	const vk::DescriptorImageInfo writeImageInfo =
+	{
+		.imageView = texture->GetImageView(),
+		.imageLayout = vk::ImageLayout::eGeneral
+	};
+
+	std::vector<vk::WriteDescriptorSet> writeDescriptorSets =
+	{{
+		.dstSet = sTexturesDescriptorSet,
+		.dstBinding = 32,
+		.dstArrayElement = static_cast<uint32_t>(texture->m_BindlessIndex),
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eSampledImage,
+		.pImageInfo = &readImageInfo
+	}};
+
+	const AkTextureDescriptor& descriptor = texture->GetDescriptor();
+	if (descriptor.flags & AkTextureFlags_ALLOW_UNORDERED_ACCESS)
+	{
+		writeDescriptorSets.push_back
+		({
+			.dstSet = sTexturesDescriptorSet,
+			.dstBinding = 64,
+			.dstArrayElement = static_cast<uint32_t>(texture->m_BindlessIndex),
+			.descriptorCount = 1,
+			.descriptorType = vk::DescriptorType::eStorageImage,
+			.pImageInfo = &writeImageInfo
+		});
+	}
+
+	const vk::Device& device = AkDevice::GetDevice();
+	device.updateDescriptorSets(static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 }
 
 const vk::DescriptorSet& AkBindlessResourcesManager::GetBuffersDescriptorSet()

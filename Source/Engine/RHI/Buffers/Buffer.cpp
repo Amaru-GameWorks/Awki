@@ -1,5 +1,6 @@
 #include "Buffer.h"
 #include "RHI/Device.h"
+#include "RHI/UploadManager.h"
 #include "RHI/Pipeline/BindlessResourcesManager.h"
 
 #include <vulkan/vulkan.hpp>
@@ -46,11 +47,12 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 	const vk::Device& device = AkDevice::GetDevice();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
 
-	VkBufferCreateInfo bufferCreateInfo = {};
-	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = m_Descriptor.size;
-	bufferCreateInfo.usage = static_cast<vk::BufferUsageFlags::MaskType>(GetUsageFlags(m_Descriptor.flags));
-	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vk::BufferCreateInfo bufferCreateInfo = 
+	{
+		.size = m_Descriptor.size,
+		.usage = GetUsageFlags(m_Descriptor.flags),
+		.sharingMode = vk::SharingMode::eExclusive,
+	};
 
 	const bool cpuAccess = m_Descriptor.flags & AkBufferFlags_CPU_ACCESS;
 	const bool fallbackToDevice = m_Descriptor.flags & AkBufferFlags_NO_SYSTEM_RAM;
@@ -77,7 +79,7 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
 	VkBuffer buffer = VK_NULL_HANDLE;
-	VkResult result = vmaCreateBuffer(allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer, &m_Storage->allocation, &allocationInfo);
+	VkResult result = vmaCreateBuffer(allocator, bufferCreateInfo, &allocationCreateInfo, &buffer, &m_Storage->allocation, &allocationInfo);
 	vk::detail::resultCheck(vk::Result(result), VULKAN_HPP_NAMESPACE_STRING "::Device::createBuffer");
 	
 	vk::BufferDeviceAddressInfo bufferAddressInfo = 
@@ -103,13 +105,13 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 		}
 		else
 		{
-			//Should use a normal staging buffer to issue a copy of the data since it failed to allocate in host visible memory and allocation is in device local memory
-			//if (shouldCopyData)
+			if (shouldCopyData)
+				AkUploadManager::QueueBufferUpload(this, data);
 		}
 	}
 	else if (shouldCopyData)
 	{
-
+		AkUploadManager::QueueBufferUpload(this, data);
 	}
 
 	if (m_Descriptor.flags & (AkBufferFlags_STRUCTURED | AkBufferFlags_VERTEX | AkBufferFlags_INDIRECT))
