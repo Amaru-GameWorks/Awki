@@ -1,5 +1,4 @@
 #include "ShaderCompiler.h"
-#include "Core/Log.h"
 
 #include <slang/slang.h>
 #include <slang/slang-com-ptr.h>
@@ -85,9 +84,9 @@ AkShaderByteCode AkShaderCompiler::CompileShader(const AkShaderCompileOptions& c
 	std::vector<slang::IComponentType*> componentTypes;
 	componentTypes.push_back(mainModule);
 
-	for (const AkShaderModuleInfo& moduleInfo : compileOptions.modules)
+	for (const auto&[name, path] : compileOptions.modules)
 	{
-		slang::IModule* module = m_Storage->session->loadModuleFromSource(moduleInfo.name.c_str(), moduleInfo.path.string().c_str(), nullptr, diagnosticsBlob.writeRef());
+		slang::IModule* module = m_Storage->session->loadModuleFromSource(name.c_str(), path.string().c_str(), nullptr, diagnosticsBlob.writeRef());
 
 		if (!module && diagnosticsBlob)
 		{

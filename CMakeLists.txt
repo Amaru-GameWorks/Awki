@@ -4,7 +4,7 @@ project(Awki)
 # Put predefined targets into a specific folder
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
 
-# Set all targes to this folder by default
+# Set all targets to this folder by default
 set(CMAKE_FOLDER "_External Dependencies")
 
 # Adds the cmake folder that contains extra cmake scripts

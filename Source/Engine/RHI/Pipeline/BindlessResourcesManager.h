@@ -1,5 +1,7 @@
 #pragma once
 #include <queue>
+#include <atomic>
+#include <limits>
 
 namespace vk
 {

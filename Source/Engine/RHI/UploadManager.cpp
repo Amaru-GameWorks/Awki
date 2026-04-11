@@ -4,6 +4,8 @@
 #include "RHI/Textures/Texture.h"
 #include "RHI/CommandBuffers/CommandBufferAllocator.h"
 
+#include <cstring>
+
 struct AkAllocation
 {
 	size_t offset = 0;
@@ -81,7 +83,7 @@ void AkUploadManager::QueueBufferUpload(AkBuffer* buffer, uint8_t* data, size_t 
 	memcpy(uploadRequest.allocation.stagingBuffer->GetMappedDataPointer() + uploadRequest.allocation.offset, data, descriptor.size);
 }
 
-void AkUploadManager::QueueTextureUpload(AkTexture* texture, uint8_t* data, size_t offset)
+void AkUploadManager::QueueTextureUpload(AkTexture* texture, uint8_t* data)
 {
 	const size_t textureSize = texture->GetSize();
 

@@ -254,9 +254,7 @@ AkTexture::AkTexture(const AkTextureDescriptor& descriptor, uint8_t* data)
 
 	m_Size = CalculateTextureSizeInfo(m_Descriptor, m_MipsInfo);
 
-	const vk::Device& device = AkDevice::GetDevice();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
-
 	const vk::ImageUsageFlags usageFlags = GetUsageFlags(m_Descriptor.flags);
 	bool autoResolveMSAA = m_Descriptor.msaa > AkMSAA::X1 && m_Descriptor.flags & AkTextureFlags_AUTO_RESOLVE_MSAA;
 
@@ -292,10 +290,10 @@ AkTexture::AkTexture(const AkTextureDescriptor& descriptor, uint8_t* data)
 
 	if (autoResolveMSAA)
 	{
-		constexpr vk::ImageUsageFlags kAttchmentMask = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
+		constexpr vk::ImageUsageFlags kAttachmentMask = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
 		imageCreateInfo.samples = GetMSAA(m_Descriptor.msaa);
-		imageCreateInfo.usage = vk::ImageUsageFlagBits::eTransientAttachment | (usageFlags & kAttchmentMask);
+		imageCreateInfo.usage = vk::ImageUsageFlagBits::eTransientAttachment | (usageFlags & kAttachmentMask);
 
 #if PLATFORM_ANDROID
 		allocationInfo.usage = VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;

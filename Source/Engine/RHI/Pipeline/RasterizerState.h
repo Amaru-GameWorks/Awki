@@ -2,6 +2,7 @@
 #include "Utilities/Hash.h"
 
 #include <vector>
+#include <cstdint>
 #include <functional>
 #include <type_traits>
 
