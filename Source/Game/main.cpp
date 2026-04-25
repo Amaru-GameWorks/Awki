@@ -2,6 +2,7 @@
 #include <Core/Log.h>
 
 #include <Platform/Events.h>
+#include <RHI/Buffers/Model.h>
 #include <RHI/Buffers/Buffer.h>
 #include <RHI/Pipeline/Shader.h>
 #include <RHI/Textures/Texture.h>
@@ -9,60 +10,63 @@
 #include <RHI/Textures/RenderTarget.h>
 #include <RHI/CommandBuffers/CommandBuffer.h>
 #include <Utilities/Shaders/ShaderCompiler.h>
+#include <Utilities/Models/GltfModelDecoder.h>
+#include <Utilities/Textures/TextureDecoder.h>
 
 #include <print>
-#include <glm/vec3.hpp>
-#include <glm/gtc/type_aligned.hpp>
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 
-struct RandomData
+struct QuadMaterial
 {
-	glm::packed_vec3 color1 = glm::vec3(1.f, 0.f, 1.f);
-	glm::packed_vec3 color2 = glm::vec3(1.f, 0.f, 0.f);
-	glm::packed_vec3 color3 = glm::vec3(0.f, 0.f, 1.f);
-	glm::packed_vec3 color4 = glm::vec3(1.f, 0.f, 1.f);
+	glm::vec4 color;
+	int32_t textureHandle;
 };
 
-struct alignas(16) UnlitMaterial
+struct UnlitMaterial
 {
-	glm::packed_vec3 color;
-	uint32_t bufferHandle;
-	uint32_t textureHandle;
+	glm::vec4 color;
+	glm::mat4 viewProjection;
+	int32_t diffuseHandle;
 };
 
 Awki* m_Engine = nullptr;
+AkModel* m_Model = nullptr;
 AkShader* m_Shader = nullptr;
 AkTexture* m_Texture = nullptr;
 AkMaterial* m_Material = nullptr;
-AkConstantBuffer* m_UnlitConstantBuffer = nullptr;
-AkStructuredBuffer* m_RandomDataBuffer = nullptr;
+AkConstantBuffer* m_PrimitiveMaterialBuffer = nullptr;
 
 AkShaderCompiler m_ShaderCompiler = {};
-UnlitMaterial m_ColorBuffer = { .color = glm::packed_vec3(0.f, 1.f, 0.7f), .bufferHandle = 0, .textureHandle = 15 };
-RandomData m_Random = {};
 
 static void OnEngineStart()
 {
 	try
 	{
-		const AkShaderCompileOptions options = { .path = "Resources/Shaders/Shader.slang" };
-		AkShaderByteCode byteCode = m_ShaderCompiler.CompileShader(options);
+		const AkShaderCompileOptions options = { .path = "Resources/Shaders/UnlitMesh.slang" };
+		AkShaderData shaderData = m_ShaderCompiler.CompileShader(options);
 
-		m_Shader = new AkShader(byteCode);
+		m_Shader = new AkShader(shaderData);
 		m_Material = new AkMaterial(m_Shader);
-		
-		m_RandomDataBuffer = new AkStructuredBuffer(m_Random);
-		
-		AkTextureDescriptor descriptor = {};
-		descriptor.flags |= AkTextureFlags_ALLOW_UNORDERED_ACCESS;
 
-		uint32_t pixel = 0xFFFFFFFF;
-		m_Texture = new AkTexture(descriptor, reinterpret_cast<uint8_t*>(&pixel));
+		std::unique_ptr<AkTextureDecoderInterface> textureDecoder = AkTextureDecoder::Decode("Resources/Textures/Minicular.png");
+		m_Texture = new AkTexture(textureDecoder->GetDescriptor(), textureDecoder->GetData());
 
-		m_ColorBuffer.bufferHandle = m_RandomDataBuffer->GetBindlessIndex();
-		m_ColorBuffer.textureHandle = m_Texture->GetBindlessIndex();
-		m_UnlitConstantBuffer = new AkConstantBuffer(m_ColorBuffer);
+		std::unique_ptr<AkModelDecoderInterface> modelDecoder = AkModelDecoder::Decode("Resources/Models/Test.gltf");
+		m_Model = new AkModel(modelDecoder);
 
-		m_Material->SetConstantBuffer(m_UnlitConstantBuffer, 0);
+		glm::uvec2 windowSize = m_Engine->GetMainWindow()->GetSize();
+		glm::mat4 projection = glm::perspectiveFov(glm::radians(75.f), static_cast<float>(windowSize.x), static_cast<float>(windowSize.y), 0.001f, 1000.f);
+		glm::mat4 view = glm::lookAt(glm::vec3(0.f, 10.f, -10.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+
+		UnlitMaterial primitiveMaterial =
+		{
+			.color = glm::vec4(1.f, 1.f, 1.f, 1.f),
+			.viewProjection = projection * view,
+			.diffuseHandle = m_Texture->GetBindlessIndex()
+		};
+		m_PrimitiveMaterialBuffer = new AkConstantBuffer(primitiveMaterial);
+		m_Material->SetConstantBuffer(m_PrimitiveMaterialBuffer, 0);
 	}
 	catch (const std::exception& exception)
 	{
@@ -76,7 +80,10 @@ static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBu
 	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::UNDEFINED, AkResourceState::RENDER_TARGET);
 
 	commandBuffer->BeginRendering(backBuffer);
-	commandBuffer->DrawPrimitive(m_Material, AkPrimitiveType::TRIANGLES, 3);
+
+	for (const AkMesh& mesh : m_Model->GetMeshes())
+		commandBuffer->DrawMesh(const_cast<AkMesh*>(&mesh), m_Material);
+
 	commandBuffer->EndRendering();
 
 	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::RENDER_TARGET, AkResourceState::PRESENT);
@@ -84,11 +91,11 @@ static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBu
 
 static void OnEngineShutdown()
 {
+	delete m_Model;
 	delete m_Shader;
-	delete m_Material;
 	delete m_Texture;
-	delete m_RandomDataBuffer;
-	delete m_UnlitConstantBuffer;
+	delete m_Material;
+	delete m_PrimitiveMaterialBuffer;
 }
 
 int main(int /*argc*/, char** /*argv*/)

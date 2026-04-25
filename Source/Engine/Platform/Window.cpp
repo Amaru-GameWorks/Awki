@@ -49,7 +49,7 @@ void AkWindow::SetSize(const glm::uvec2& size)
 		AkLogError("Failed to set window size: {}", SDL_GetError());
 }
 
-glm::uvec2 AkWindow::GetSize()
+glm::uvec2 AkWindow::GetSize() const
 {
 	int width = 1, height = 1;
 	if (!SDL_GetWindowSizeInPixels(m_WindowHandle, &width, &height))
@@ -64,7 +64,7 @@ void AkWindow::SetPosition(const glm::uvec2& position)
 		AkLogError("Failed to set window position: {}", SDL_GetError());
 }
 
-glm::uvec2 AkWindow::GetPosition()
+glm::uvec2 AkWindow::GetPosition() const
 {
 	int x = 0, y = 0;
 	if (!SDL_GetWindowPosition(m_WindowHandle, &x, &y))

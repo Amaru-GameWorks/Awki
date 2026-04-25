@@ -1,8 +1,6 @@
 #pragma once
 #include "Utilities/ForwardStorage.h"
 
-#include <slang/slang.h>
-
 #include <vector>
 #include <filesystem>
 
@@ -18,20 +16,21 @@ struct AkShaderCompileOptions
 	std::vector<AkShaderModuleInfo> modules = {};
 };
 
-class AkShaderByteCode
+class AkShaderData
 {
 public:
-	AkShaderByteCode();
-	~AkShaderByteCode();
+	AkShaderData();
+	~AkShaderData();
 
-	size_t GetSize() const;
+	size_t GetByteCodeSize() const;
 	const uint8_t* GetByteCode() const;
+	const struct AkShaderReflection& GetReflection() const;
 
 	operator bool() const;
 
 private:
 	friend class AkShaderCompiler;
-	ForwardStorage<struct AkShaderByteCodeStorage, 8> m_Storage;
+	ForwardStorage<struct AkShaderByteCodeStorage, 96> m_Storage;
 };
 
 class AkShaderCompiler
@@ -40,7 +39,7 @@ public:
 	AkShaderCompiler();
 	~AkShaderCompiler();
 
-	AkShaderByteCode CompileShader(const AkShaderCompileOptions& compileOptions);
+	AkShaderData CompileShader(const AkShaderCompileOptions& compileOptions);
 
 private:
 	ForwardStorage<struct AkShaderCompilerStorage, 16> m_Storage;

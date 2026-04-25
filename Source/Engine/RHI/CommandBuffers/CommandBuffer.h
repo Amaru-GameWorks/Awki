@@ -1,6 +1,6 @@
 #pragma once
-#include "RHI/ResourceStates.h"
 #include "Utilities/ForwardStorage.h"
+#include "RHI/Pipeline/ResourceStates.h"
 #include "RHI/Pipeline/RasterizerState.h"
 
 #include <glm/vec4.hpp>
@@ -25,6 +25,7 @@ public:
 	void BeginRendering(class AkRenderTarget* renderTarget);
 	void EndRendering();
 
+	void DrawMesh(class AkMesh* mesh, class AkMaterial* material);
 	void DrawPrimitive(class AkMaterial* material, const AkPrimitiveType primitiveType, const uint32_t vertexCount);
 
 	void TransitionRenderTargetColorAttachments(class AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState);

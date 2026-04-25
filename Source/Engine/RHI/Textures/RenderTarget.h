@@ -1,6 +1,6 @@
 #pragma once
-#include "RHI/ResourceStates.h"
 #include "Utilities/ForwardStorage.h"
+#include "RHI/Pipeline/ResourceStates.h"
 
 #include <glm/vec4.hpp>
 

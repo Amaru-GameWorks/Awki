@@ -7,6 +7,7 @@ file(GLOB_RECURSE ENGINE_SOURCE CONFIGURE_DEPENDS "*.cpp" "*.h")
 # Add VisualStudio Natvis files
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	set(NATVIS_FILES
+		Awki.natvis
 		../../ThirdParty/glm/util/glm.natvis
 	)
 else()
@@ -28,6 +29,7 @@ target_compile_features(Engine PUBLIC cxx_std_23)
 # Set ThirdParty preprocessor definitions
 list(APPEND ENGINE_DEFINES
 	GLM_FORCE_INTRINSICS
+	GLM_ENABLE_EXPERIMENTAL
 	GLM_FORCE_DEPTH_ZERO_TO_ONE
 	GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 	

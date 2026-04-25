@@ -28,3 +28,8 @@ constexpr size_t FNV1aHash(const char* string)
 
 	return val;
 }
+
+constexpr size_t FNV1aHash(const std::string_view string)
+{
+	return FNV1aHash(string.data());
+}

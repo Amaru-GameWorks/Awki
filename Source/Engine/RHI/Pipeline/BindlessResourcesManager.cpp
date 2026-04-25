@@ -3,19 +3,14 @@
 #include "Core/Assert.h"
 #include "RHI/Buffers/Buffer.h"
 #include "RHI/Textures/Texture.h"
+#include "RHI/Samplers/Sampler.h"
 
 #include <vulkan/vulkan.hpp>
 
 static vk::DescriptorPool sDescriptorPool = {};
 
-static vk::DescriptorSet sBuffersDescriptorSet = {};
-static vk::DescriptorSetLayout sBuffersDescriptorSetLayout = {};
-
-static vk::DescriptorSet sTexturesDescriptorSet = {};
-static vk::DescriptorSetLayout sTexturesDescriptorSetLayout = {};
-
-static vk::DescriptorSet sSamplersDescriptorSet = {};
-static vk::DescriptorSetLayout sSamplersDescriptorSetLayout = {};
+static vk::DescriptorSet sDescriptorSet = {};
+static vk::DescriptorSetLayout sDescriptorSetLayout = {};
 
 void AkBindlessResourcesManager::Initialize()
 {
@@ -32,128 +27,79 @@ void AkBindlessResourcesManager::Initialize()
 	const vk::DescriptorPoolCreateInfo poolCreateInfo =
 	{
 		.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
-		.maxSets = 3,
+		.maxSets = 1,
 		.poolSizeCount = static_cast<uint32_t>(kPoolSizes.size()),
 		.pPoolSizes = kPoolSizes.data()
 	};
 
 	sDescriptorPool = device.createDescriptorPool(poolCreateInfo);
 
-	const std::vector<vk::DescriptorSetLayoutBinding> buffersBindings =
+	const std::vector<vk::DescriptorSetLayoutBinding> bindings =
 	{
 		{
-			.binding = 32,
+			.binding = 0,
 			.descriptorType = vk::DescriptorType::eStorageBuffer,
 			.descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources,
 			.stageFlags = vk::ShaderStageFlagBits::eAll
 		},
 		{
-			.binding = 64,
+			.binding = 1,
 			.descriptorType = vk::DescriptorType::eStorageBuffer,
 			.descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources,
 			.stageFlags = vk::ShaderStageFlagBits::eAll
-		}
-	};
-
-	const std::vector<vk::DescriptorSetLayoutBinding> texturesBindings =
-	{
+		},
 		{
-			.binding = 32,
+			.binding = 2,
 			.descriptorType = vk::DescriptorType::eSampledImage,
 			.descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources,
 			.stageFlags = vk::ShaderStageFlagBits::eAll
 		},
 		{
-			.binding = 64,
+			.binding = 3,
 			.descriptorType = vk::DescriptorType::eStorageImage,
+			.descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources,
+			.stageFlags = vk::ShaderStageFlagBits::eAll
+		},
+		{
+			.binding = 4,
+			.descriptorType = vk::DescriptorType::eSampler,
 			.descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources,
 			.stageFlags = vk::ShaderStageFlagBits::eAll
 		}
 	};
 
-	const vk::DescriptorSetLayoutBinding samplersBinding =
-	{
-		.binding = 96,
-		.descriptorType = vk::DescriptorType::eSampler,
-		.descriptorCount = AkBindlessResourcesManager::kMaxBindlessResources,
-		.stageFlags = vk::ShaderStageFlagBits::eAll
-	};
-
-	const std::array<vk::DescriptorBindingFlags, 2> kBindingFlags = { vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind, vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind };
+	const std::vector<vk::DescriptorBindingFlags> kBindingFlags(5, vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind);
 	vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo =
 	{
-		.bindingCount = 2,
+		.bindingCount = static_cast<uint32_t>(kBindingFlags.size()),
 		.pBindingFlags = kBindingFlags.data()
 	};
 
-	const vk::DescriptorSetLayoutCreateInfo buffersSetLayoutCreateInfo =
+	const vk::DescriptorSetLayoutCreateInfo setLayoutCreateInfo =
 	{
 		.pNext = &bindingFlagsCreateInfo,
 		.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-		.bindingCount = 2,
-		.pBindings = buffersBindings.data()
+		.bindingCount = static_cast<uint32_t>(bindings.size()),
+		.pBindings = bindings.data()
 	};
-	sBuffersDescriptorSetLayout = device.createDescriptorSetLayout(buffersSetLayoutCreateInfo);
+	sDescriptorSetLayout = device.createDescriptorSetLayout(setLayoutCreateInfo);
 
-	const vk::DescriptorSetLayoutCreateInfo texturesSetLayoutCreateInfo =
-	{
-		.pNext = &bindingFlagsCreateInfo,
-		.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-		.bindingCount = 2,
-		.pBindings = texturesBindings.data()
-	};
-	sTexturesDescriptorSetLayout = device.createDescriptorSetLayout(texturesSetLayoutCreateInfo);
-
-	bindingFlagsCreateInfo.bindingCount = 1;
-	const vk::DescriptorSetLayoutCreateInfo samplersSetLayoutCreateInfo =
-	{
-		.pNext = &bindingFlagsCreateInfo,
-		.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-		.bindingCount = 1,
-		.pBindings = &samplersBinding
-	};
-	sSamplersDescriptorSetLayout = device.createDescriptorSetLayout(samplersSetLayoutCreateInfo);
-
-	const vk::DescriptorSetAllocateInfo buffersSetAllocateInfo =
+	const vk::DescriptorSetAllocateInfo setAllocateInfo =
 	{
 		.descriptorPool = sDescriptorPool,
 		.descriptorSetCount = 1,
-		.pSetLayouts = &sBuffersDescriptorSetLayout
+		.pSetLayouts = &sDescriptorSetLayout
 	};
 
-	std::vector<vk::DescriptorSet> allocatedSets = device.allocateDescriptorSets(buffersSetAllocateInfo);
+	std::vector<vk::DescriptorSet> allocatedSets = device.allocateDescriptorSets(setAllocateInfo);
 	if (!allocatedSets.empty())
-		sBuffersDescriptorSet = allocatedSets[0];
-
-	const vk::DescriptorSetAllocateInfo texturesSetAllocateInfo =
-	{
-		.descriptorPool = sDescriptorPool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &sTexturesDescriptorSetLayout
-	};
-
-	allocatedSets = device.allocateDescriptorSets(texturesSetAllocateInfo);
-	if (!allocatedSets.empty())
-		sTexturesDescriptorSet = allocatedSets[0];
-
-	const vk::DescriptorSetAllocateInfo samplersSetAllocateInfo =
-	{
-		.descriptorPool = sDescriptorPool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &sSamplersDescriptorSetLayout
-	};
-
-	allocatedSets = device.allocateDescriptorSets(samplersSetAllocateInfo);
-	if (!allocatedSets.empty())
-		sSamplersDescriptorSet = allocatedSets[0];
+		sDescriptorSet = allocatedSets[0];
 }
 
 void AkBindlessResourcesManager::Deinitialize()
 {
 	const vk::Device& device = AkDevice::GetDevice();
-	device.destroyDescriptorSetLayout(sBuffersDescriptorSetLayout);
-	device.destroyDescriptorSetLayout(sSamplersDescriptorSetLayout);
-	device.destroyDescriptorSetLayout(sTexturesDescriptorSetLayout);
+	device.destroyDescriptorSetLayout(sDescriptorSetLayout);
 	device.destroyDescriptorPool(sDescriptorPool);
 }
 
@@ -179,16 +125,16 @@ void AkBindlessResourcesManager::AddBuffer(AkBuffer* buffer)
 	const std::vector<vk::WriteDescriptorSet> writeDescriptorSets =
 	{
 		{
-			.dstSet = sBuffersDescriptorSet,
-			.dstBinding = 32,
+			.dstSet = sDescriptorSet,
+			.dstBinding = 0,
 			.dstArrayElement = static_cast<uint32_t>(buffer->m_BindlessIndex),
 			.descriptorCount = 1,
 			.descriptorType = vk::DescriptorType::eStorageBuffer,
 			.pBufferInfo = &bufferInfo
 		},
 		{
-			.dstSet = sBuffersDescriptorSet,
-			.dstBinding = 64,
+			.dstSet = sDescriptorSet,
+			.dstBinding = 1,
 			.dstArrayElement = static_cast<uint32_t>(buffer->m_BindlessIndex),
 			.descriptorCount = 1,
 			.descriptorType = vk::DescriptorType::eStorageBuffer,
@@ -226,8 +172,8 @@ void AkBindlessResourcesManager::AddTexture(AkTexture* texture)
 
 	std::vector<vk::WriteDescriptorSet> writeDescriptorSets =
 	{{
-		.dstSet = sTexturesDescriptorSet,
-		.dstBinding = 32,
+		.dstSet = sDescriptorSet,
+		.dstBinding = 2,
 		.dstArrayElement = static_cast<uint32_t>(texture->m_BindlessIndex),
 		.descriptorCount = 1,
 		.descriptorType = vk::DescriptorType::eSampledImage,
@@ -239,8 +185,8 @@ void AkBindlessResourcesManager::AddTexture(AkTexture* texture)
 	{
 		writeDescriptorSets.push_back
 		({
-			.dstSet = sTexturesDescriptorSet,
-			.dstBinding = 64,
+			.dstSet = sDescriptorSet,
+			.dstBinding = 3,
 			.dstArrayElement = static_cast<uint32_t>(texture->m_BindlessIndex),
 			.descriptorCount = 1,
 			.descriptorType = vk::DescriptorType::eStorageImage,
@@ -252,32 +198,57 @@ void AkBindlessResourcesManager::AddTexture(AkTexture* texture)
 	device.updateDescriptorSets(static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 }
 
-const vk::DescriptorSet& AkBindlessResourcesManager::GetBuffersDescriptorSet()
+void AkBindlessResourcesManager::AddSampler(AkSampler* sampler)
 {
-	return sBuffersDescriptorSet;
+	AkAssert(sSamplersCount < kMaxBindlessResources, "Maximum amount of samplers exceded!");
+
+	if (!sSamplersFreeList.empty())
+	{
+		sampler->m_BindlessIndex = sTexturesFreeList.front();
+		sSamplersFreeList.pop();
+	}
+	else
+		sampler->m_BindlessIndex = sSamplersCount.fetch_add(1);
+
+	const vk::DescriptorImageInfo imageInfo = { .sampler = sampler->GetSampler() };
+	const vk::WriteDescriptorSet writeDescriptorSet =
+	{
+		.dstSet = sDescriptorSet,
+		.dstBinding = 4,
+		.dstArrayElement = static_cast<uint32_t>(sampler->m_BindlessIndex),
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eSampler,
+		.pImageInfo = &imageInfo
+	};
+
+	const vk::Device& device = AkDevice::GetDevice();
+	device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 }
 
-const vk::DescriptorSet& AkBindlessResourcesManager::GetTexturesDescriptorSet()
+void AkBindlessResourcesManager::RemoveBuffer(AkBuffer* buffer)
 {
-	return sTexturesDescriptorSet;
+	if (buffer->m_BindlessIndex != -1)
+		sBuffersFreeList.push(buffer->m_BindlessIndex);
 }
 
-const vk::DescriptorSet& AkBindlessResourcesManager::GetSamplersDescriptorSet()
+void AkBindlessResourcesManager::RemoveTexture(AkTexture* texture)
 {
-	return sSamplersDescriptorSet;
+	if (texture->m_BindlessIndex != -1)
+		sTexturesFreeList.push(texture->m_BindlessIndex);
 }
 
-const vk::DescriptorSetLayout& AkBindlessResourcesManager::GetBuffersDescriptorSetLayout()
+void AkBindlessResourcesManager::RemoveSampler(AkSampler* sampler)
 {
-	return sBuffersDescriptorSetLayout;
+	if (sampler->m_BindlessIndex != -1)
+		sSamplersFreeList.push(sampler->m_BindlessIndex);
 }
 
-const vk::DescriptorSetLayout& AkBindlessResourcesManager::GetTexturesDescriptorSetLayout()
+const vk::DescriptorSet& AkBindlessResourcesManager::GetDescriptorSet()
 {
-	return sTexturesDescriptorSetLayout;
+	return sDescriptorSet;
 }
 
-const vk::DescriptorSetLayout& AkBindlessResourcesManager::GetSamplersDescriptorSetLayout()
+const vk::DescriptorSetLayout& AkBindlessResourcesManager::GetDescriptorSetLayout()
 {
-	return sSamplersDescriptorSetLayout;
+	return sDescriptorSetLayout;
 }

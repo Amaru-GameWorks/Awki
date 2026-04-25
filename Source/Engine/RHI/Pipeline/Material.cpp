@@ -10,7 +10,7 @@
 struct AkMaterialStorage
 {
 	vk::DescriptorPool pool;
-	vk::DescriptorSet descriptorSet;
+	std::vector<vk::DescriptorSet> descriptorSets;
 };
 
 AkMaterial::AkMaterial(class AkShader* shader, const std::optional<AkRasterizerState>& rasterizerState)
@@ -21,22 +21,21 @@ AkMaterial::AkMaterial(class AkShader* shader, const std::optional<AkRasterizerS
 	m_RasterizerState.CalculateHash();
 
 	const vk::Device& device = AkDevice::GetDevice();
+	const AkShaderReflection& reflection = m_Shader->GetReflection();
+	const std::vector<vk::DescriptorSetLayout>& descriptorLayouts = m_Shader->GetDescriptorSetLayouts();
 
-	const vk::DescriptorPoolSize poolSize = { .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1 };
-	const vk::DescriptorPoolCreateInfo descPoolCreateInfo = { .maxSets = 1, .poolSizeCount = 1, .pPoolSizes = &poolSize };
+	const vk::DescriptorPoolSize poolSize = { .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = reflection.constantBuffersCount };
+	const vk::DescriptorPoolCreateInfo descPoolCreateInfo = { .maxSets = static_cast<uint32_t>(reflection.descriptorSets.size()), .poolSizeCount = 1, .pPoolSizes = &poolSize};
 	m_Storage->pool = device.createDescriptorPool(descPoolCreateInfo);
 
 	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo =
 	{
 		.descriptorPool = m_Storage->pool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &m_Shader->GetDescriptorSetLayout()
+		.descriptorSetCount = descPoolCreateInfo.maxSets,
+		.pSetLayouts = descriptorLayouts.data()
 	};
 
-	std::vector<vk::DescriptorSet> allocatedSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
-	if(!allocatedSets.empty())
-		m_Storage->descriptorSet = allocatedSets[0];
-
+	m_Storage->descriptorSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
 	m_Hash = Hash(m_RasterizerState);
 	HashCombine(m_Hash, m_Shader);
 }
@@ -47,7 +46,7 @@ AkMaterial::~AkMaterial()
 	device.destroyDescriptorPool(m_Storage->pool);
 }
 
-void AkMaterial::SetConstantBuffer(AkConstantBuffer* buffer, const uint32_t binding)
+void AkMaterial::SetConstantBuffer(AkConstantBuffer* buffer, const uint32_t binding, const uint32_t set)
 {
 	const vk::Device& device = AkDevice::GetDevice();
 
@@ -60,7 +59,7 @@ void AkMaterial::SetConstantBuffer(AkConstantBuffer* buffer, const uint32_t bind
 
 	const vk::WriteDescriptorSet writeDescriptorSet =
 	{
-		.dstSet = m_Storage->descriptorSet,
+		.dstSet = m_Storage->descriptorSets[set],
 		.dstBinding = binding,
 		.descriptorCount = 1,
 		.descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -70,7 +69,7 @@ void AkMaterial::SetConstantBuffer(AkConstantBuffer* buffer, const uint32_t bind
 	device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 }
 
-const vk::DescriptorSet& AkMaterial::GetDescriptorSet() const
+const std::vector<vk::DescriptorSet>& AkMaterial::GetDescriptorSets() const
 {
-	return m_Storage->descriptorSet;
+	return m_Storage->descriptorSets;
 }

@@ -3,8 +3,13 @@
 
 #include <vector>
 #include <cstdint>
-#include <functional>
 #include <type_traits>
+
+enum class AkIndexType : uint8_t
+{
+	U16,
+	U32
+};
 
 enum class AkPrimitiveType : uint8_t
 {

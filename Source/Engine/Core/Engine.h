@@ -29,14 +29,14 @@ public:
 	AkSimpleDelegate& GetOnEngineShutdown() { return m_OnEngineShutdown; }
 	AkOnFrameRender& GetOnFrameRender() { return m_OnFrameRender; }
 
-	const std::shared_ptr<AkWindow>& GetMainWindow() const { return m_Window; }
-	const std::shared_ptr<AkSwapchain>& GetMainSwapchain() const { return m_Swapchain; }
+	const AkWindow* GetMainWindow() const { return m_Window.get(); }
+	const AkSwapchain* GetMainSwapchain() const { return m_Swapchain.get(); }
 
 private:
 	AkSimpleDelegate m_OnEngineStart = {};
 	AkSimpleDelegate m_OnEngineShutdown = {};
 	AkOnFrameRender m_OnFrameRender = {};
 
-	std::shared_ptr<AkWindow> m_Window = nullptr;
-	std::shared_ptr<AkSwapchain> m_Swapchain = nullptr;
+	std::unique_ptr<AkWindow> m_Window = nullptr;
+	std::unique_ptr<AkSwapchain> m_Swapchain = nullptr;
 };

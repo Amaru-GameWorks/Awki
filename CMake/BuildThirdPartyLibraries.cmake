@@ -4,3 +4,7 @@ set(SDL_TEST_LIBRARY OFF)
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
 add_subdirectory(${SDL_DIR} SYSTEM)
+
+# MeshOptimizer
+set(MESHOPTIMIZER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/meshoptimizer")
+add_subdirectory(${MESHOPTIMIZER_DIR} SYSTEM)

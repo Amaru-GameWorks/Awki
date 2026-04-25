@@ -44,7 +44,7 @@ struct AkSwapchainStorage
 	std::vector<vk::Semaphore> finishedRenderingSemaphores = {};
 };
 
-AkSwapchain::AkSwapchain(const std::shared_ptr<AkWindow>& window)
+AkSwapchain::AkSwapchain(class AkWindow* window)
 {
 	m_Window = window;
 
@@ -322,7 +322,7 @@ bool AkSwapchain::CreateBackBuffersRenderTargets()
 	{
 		try
 		{
-			m_BackBufferTextures.push_back(std::make_shared<AkTexture>(descriptor, m_Storage->backBufferImages[i]));
+			m_BackBufferTextures.push_back(std::make_unique<AkTexture>(descriptor, m_Storage->backBufferImages[i]));
 
 			const AkRenderTargetAttachmentInfo colorAttachment =
 			{

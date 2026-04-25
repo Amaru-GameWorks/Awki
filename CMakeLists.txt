@@ -54,12 +54,17 @@ file(GLOB_RECURSE GAME_SOURCE CONFIGURE_DEPENDS "Source/Game/*.cpp" "Source/Game
 # Set ThirdParty include directories
 include_directories(SYSTEM
 	ThirdParty/glm
+	ThirdParty/meshoptimizer/src
+	ThirdParty/MikkTSpace
 	ThirdParty/SDL/include
+	ThirdParty/stb
+	ThirdParty/tinygltf
 	${Vulkan_INCLUDE_DIR}
 )
 
 # Set ThirdParty link targets
 list(APPEND THIRDPARTY_LINK_TARGETS
+	meshoptimizer
 	SDL3-static
 	Vulkan::Vulkan
 	${Slang_LIBRARY}

@@ -12,27 +12,30 @@ namespace vk
 class AkBindlessResourcesManager
 {
 public:
-	static constexpr int16_t kMaxBindlessResources = std::numeric_limits<int16_t>::max();
-	static constexpr int16_t kInvalidBindlessIndex = -1;
+	static constexpr int32_t kMaxBindlessResources = std::numeric_limits<int16_t>::max();
+	static constexpr int32_t kInvalidBindlessIndex = -1;
 
 	static void Initialize();
 	static void Deinitialize();
 
 	static void AddBuffer(class AkBuffer* buffer);
 	static void AddTexture(class AkTexture* texture);
+	static void AddSampler(class AkSampler* sampler);
 
-	static const vk::DescriptorSet& GetBuffersDescriptorSet();
-	static const vk::DescriptorSet& GetTexturesDescriptorSet();
-	static const vk::DescriptorSet& GetSamplersDescriptorSet();
+	static void RemoveBuffer(class AkBuffer* buffer);
+	static void RemoveTexture(class AkTexture* texture);
+	static void RemoveSampler(class AkSampler* sampler);
 
-	static const vk::DescriptorSetLayout& GetBuffersDescriptorSetLayout();
-	static const vk::DescriptorSetLayout& GetTexturesDescriptorSetLayout();
-	static const vk::DescriptorSetLayout& GetSamplersDescriptorSetLayout();
+	static const vk::DescriptorSet& GetDescriptorSet();
+	static const vk::DescriptorSetLayout& GetDescriptorSetLayout();
 
 private:
-	static inline std::atomic_int16_t sBuffersCount = 0;
-	static inline std::queue<int16_t> sBuffersFreeList = {};
+	static inline std::atomic_int32_t sBuffersCount = 0;
+	static inline std::queue<int32_t> sBuffersFreeList = {};
 
-	static inline std::atomic_int16_t sTexturesCount = 0;
-	static inline std::queue<int16_t> sTexturesFreeList = {};
+	static inline std::atomic_int32_t sTexturesCount = 0;
+	static inline std::queue<int32_t> sTexturesFreeList = {};
+
+	static inline std::atomic_int32_t sSamplersCount = 0;
+	static inline std::queue<int32_t> sSamplersFreeList = {};
 };

@@ -2,6 +2,7 @@
 #include "RHI/Device.h"
 #include "Utilities/Math.h"
 #include "Utilities/ForwardStorage.h"
+#include "RHI/Pipeline/RasterizerState.h"
 
 #include <type_traits>
 
@@ -103,4 +104,43 @@ public:
 	AkRWStructuredBuffer(T& data, AkBufferFlagBits extraFlags = {})
 		: AkRWStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
 	{ }
+};
+
+class AkVertexBuffer : public AkBuffer
+{
+public:
+	AkVertexBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_VERTEX | AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	{ }
+};
+
+class AkIndexBufferBase : public AkBuffer
+{
+public:
+	AkIndexBufferBase(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_INDEX | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	{ }
+
+	virtual ~AkIndexBufferBase() = default;
+	virtual AkIndexType GetType() const = 0;
+	virtual uint32_t GetElementSize() const = 0;
+};
+
+template<AkIndexType IndexType>
+class AkIndexBuffer : public AkIndexBufferBase
+{
+	using Element = std::conditional_t<IndexType == AkIndexType::U16, uint16_t, uint32_t>;
+
+public:
+	using AkIndexBufferBase::AkIndexBufferBase;
+	
+	AkIndexType GetType() const override
+	{
+		return IndexType;
+	}
+
+	uint32_t GetElementSize() const override
+	{
+		return sizeof(Element);
+	}
 };

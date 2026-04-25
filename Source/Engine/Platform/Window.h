@@ -41,10 +41,10 @@ public:
 	void SetTitle(std::string_view title);
 	
 	void SetSize(const glm::uvec2& size);
-	glm::uvec2 GetSize();
+	glm::uvec2 GetSize() const;
 
 	void SetPosition(const glm::uvec2& position);
-	glm::uvec2 GetPosition();
+	glm::uvec2 GetPosition() const;
 
 	void SetBorderlessFullScreen(bool state);
 	void SetExclusiveFullscreen(const AkDisplayMode& displayMode);

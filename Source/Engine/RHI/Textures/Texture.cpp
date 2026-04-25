@@ -341,6 +341,8 @@ AkTexture::AkTexture(const AkTextureDescriptor& descriptor, const vk::Image& ima
 
 AkTexture::~AkTexture()
 {
+	AkBindlessResourcesManager::RemoveTexture(this);
+
 	const vk::Device& device = AkDevice::GetDevice();
 
 	if (!m_FromNative)

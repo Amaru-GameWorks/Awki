@@ -7,7 +7,7 @@
 class AkSwapchain
 {
 public:
-	AkSwapchain(const std::shared_ptr<class AkWindow>& window);
+	AkSwapchain(class AkWindow* window);
 	~AkSwapchain();
 
 	bool Prepare();
@@ -21,9 +21,9 @@ private:
 	uint8_t m_CurrentFrameIndex = 0;
 	uint32_t m_CurrentBackBufferIndex = 0;
 
-	std::shared_ptr<class AkWindow> m_Window = nullptr;
+	class AkWindow* m_Window = nullptr;
 	ForwardStorage<struct AkSwapchainStorage, 168> m_Storage;
-	std::vector<std::shared_ptr<class AkTexture>> m_BackBufferTextures;
+	std::vector<std::unique_ptr<class AkTexture>> m_BackBufferTextures;
 	std::vector<std::unique_ptr<class AkRenderTarget>> m_BackBufferRenderTargets;
 
 	bool CreatePresentationSurface();

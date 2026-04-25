@@ -1,13 +1,14 @@
-ByteAddressBuffer BindlessBuffers[] : register(t0, space0);
-RWByteAddressBuffer RWBindlessBuffers[] : register(u0, space0);
+ByteAddressBuffer BindlessBuffers[];
+RWByteAddressBuffer RWBindlessBuffers[];
+Texture2D BindlessTextures2d[];
+RWTexture2D RWBindlessTextures2d[];
+SamplerState BindlessSamplers[];
 
-Texture2D BindlessTextures2d[] : register(t0, space1);
-RWTexture2D RWBindlessTextures2d[] : register(u0, space1);
+property SamplerState gPointClampSampler { get { return BindlessSamplers[0]; } }
+property SamplerState gLinearClampSampler { get { return BindlessSamplers[1]; } }
 
-SamplerState BindlessSamplers[] : register(s0, space2);
-
-typealias BBuffer = uint;
-typealias BTexture = uint;
+typealias BBuffer = int32_t;
+typealias BTexture = int32_t;
 
 struct BufferHandle<T>
 {
@@ -54,3 +55,12 @@ struct TextureHandle<T>
             return reinterpret<T>(RWBindlessTextures2d[index]);
     }
 }
+
+struct AwkiVertex
+{
+    float3 position;
+    float3 normal;
+    float2 uv;
+    float4 tangent;
+    float4 _Padding;
+};

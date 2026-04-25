@@ -6,9 +6,31 @@
 #include "Platform/Events.h"
 
 #include "RHI/UploadManager.h"
+#include "RHI/Samplers/Sampler.h"
 #include "RHI/Pipeline/PipelineStateManager.h"
 #include "RHI/Pipeline/BindlessResourcesManager.h"
 #include "RHI/CommandBuffers/CommandBufferAllocator.h"
+
+std::unique_ptr<AkSampler> gPointClampSampler;
+std::unique_ptr<AkSampler> gLinearClampSampler;
+
+void InitializeEngineResources()
+{
+	AkSamplerDescriptor samplerDescriptor = {};
+	samplerDescriptor.filterMode = AkFilterMode::NEAREST;
+	samplerDescriptor.SetWrapMode(AkWrapMode::CLAMP_TO_EDGE);
+	gPointClampSampler = std::make_unique<AkSampler>(samplerDescriptor);
+
+	samplerDescriptor.filterMode = AkFilterMode::LINEAR;
+	samplerDescriptor.SetWrapMode(AkWrapMode::CLAMP_TO_EDGE);
+	gLinearClampSampler = std::make_unique<AkSampler>(samplerDescriptor);
+}
+
+void FreeEngineResources()
+{
+	gPointClampSampler = nullptr;
+	gLinearClampSampler = nullptr;
+}
 
 Awki::Awki(const AkInstanceDescriptor& descriptor)
 {
@@ -25,9 +47,10 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 
 	AkPipelineStateManager::Initialize();
 	AkBindlessResourcesManager::Initialize();
+	InitializeEngineResources();
 
-	m_Window = std::make_shared<AkWindow>(descriptor.windowDescriptor);
-	m_Swapchain = std::make_shared<AkSwapchain>(m_Window);
+	m_Window = std::make_unique<AkWindow>(descriptor.windowDescriptor);
+	m_Swapchain = std::make_unique<AkSwapchain>(m_Window.get());
 
 	AkLogInfo("{} {} initializing", descriptor.gameName, descriptor.gameVersion);
 }
@@ -36,9 +59,10 @@ Awki::~Awki()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
 
-	m_Swapchain.reset();
-	m_Window.reset();
+	m_Swapchain = nullptr;
+	m_Window = nullptr;
 
+	FreeEngineResources();
 	AkUploadManager::ReleaseBuffers();
 
 	AkBindlessResourcesManager::Deinitialize();

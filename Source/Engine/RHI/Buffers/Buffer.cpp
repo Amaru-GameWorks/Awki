@@ -8,10 +8,10 @@
 
 constexpr vk::BufferUsageFlags GetUsageFlags(const AkBufferFlags flags)
 {
-	vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eShaderDeviceAddress;
+	vk::BufferUsageFlags usageFlags = {};
 
 	if (flags & (AkBufferFlags_STRUCTURED))
-		usageFlags |= vk::BufferUsageFlagBits::eStorageBuffer;
+		usageFlags |= vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer;
 
 	if (flags & AkBufferFlags_CONSTANT)
 		usageFlags |= vk::BufferUsageFlagBits::eUniformBuffer;
@@ -81,14 +81,13 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 	VkBuffer buffer = VK_NULL_HANDLE;
 	VkResult result = vmaCreateBuffer(allocator, bufferCreateInfo, &allocationCreateInfo, &buffer, &m_Storage->allocation, &allocationInfo);
 	vk::detail::resultCheck(vk::Result(result), VULKAN_HPP_NAMESPACE_STRING "::Device::createBuffer");
-	
-	vk::BufferDeviceAddressInfo bufferAddressInfo = 
-	{
-		.buffer = buffer
-	};
-
 	m_Storage->buffer = buffer;
-	m_Storage->deviceAddress = device.getBufferAddress(bufferAddressInfo);
+
+	if (m_Descriptor.flags & AkBufferFlags_STRUCTURED)
+	{
+		const vk::BufferDeviceAddressInfo bufferAddressInfo = { .buffer = m_Storage->buffer };
+		m_Storage->deviceAddress = device.getBufferAddress(bufferAddressInfo);
+	}
 
 	if (cpuAccess)
 	{
@@ -120,6 +119,8 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 
 AkBuffer::~AkBuffer()
 {
+	AkBindlessResourcesManager::RemoveBuffer(this);
+
 	const vk::Device& device = AkDevice::GetDevice();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
 
