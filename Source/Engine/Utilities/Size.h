@@ -17,7 +17,7 @@ constexpr inline size_t SizeGB(const size_t value)
 	return SizeMB(value) * static_cast<size_t>(1024);
 }
 
-std::string ByteSizeToShortString(const size_t bytes)
+inline std::string ByteSizeToShortString(const size_t bytes)
 {
 	std::stringstream stringStream = {};
 	stringStream << std::fixed;

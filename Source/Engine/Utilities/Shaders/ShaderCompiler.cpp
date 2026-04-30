@@ -34,7 +34,8 @@ AkShaderCompiler::AkShaderCompiler()
 	({
 		{ slang::CompilerOptionName::EmitSpirvMethod,		{ slang::CompilerOptionValueKind::Int, SLANG_EMIT_SPIRV_DIRECTLY }},
 		{ slang::CompilerOptionName::Optimization,			{ slang::CompilerOptionValueKind::Int, SLANG_OPTIMIZATION_LEVEL_DEFAULT }},
-		{ slang::CompilerOptionName::VulkanInvertY,			{ slang::CompilerOptionValueKind::Int, 1 }}
+		{ slang::CompilerOptionName::VulkanInvertY,			{ slang::CompilerOptionValueKind::Int, 1 }},
+		{ slang::CompilerOptionName::ForceCLayout,			{ slang::CompilerOptionValueKind::Int, 1 }}
 	});
 
 	static constexpr std::array kSearchPaths = std::to_array<const char*>
@@ -137,7 +138,24 @@ AkShaderData AkShaderCompiler::CompileShader(const AkShaderCompileOptions& compi
 
 		if (parameterCategory == slang::ParameterCategory::PushConstantBuffer)
 		{
-			reflection.pushConstantSize = static_cast<uint32_t>(typeLayout->getElementTypeLayout()->getSize());
+			slang::TypeLayoutReflection* pushConstantLayout = typeLayout->getElementTypeLayout();
+			reflection.pushConstantSize = static_cast<uint32_t>(pushConstantLayout->getSize());
+
+			const unsigned int fieldCount = pushConstantLayout->getFieldCount();
+			for (unsigned int j = 0; j < fieldCount; ++j)
+			{
+				slang::VariableLayoutReflection* field = pushConstantLayout->getFieldByIndex(j);
+				slang::TypeReflection* fieldType = field->getType();
+
+				if (strcmp(fieldType->getName(), "MaterialHandle") == 0)
+				{
+					slang::VariableReflection* genericType = fieldType->getGenericContainer()->getTypeParameter(0);
+					slang::TypeReflection* concreteType = fieldType->getGenericContainer()->getConcreteType(genericType);
+					slang::TypeLayoutReflection* concreteTypeLayout = shaderReflection->getTypeLayout(concreteType);
+					reflection.materialDataSize = static_cast<uint32_t>(concreteTypeLayout->getSize());
+					break;
+				}
+			}
 		}
 		else
 		{

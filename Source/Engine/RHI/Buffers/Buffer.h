@@ -70,7 +70,7 @@ public:
 class AkConstantBuffer : public AkBuffer
 {
 public:
-	AkConstantBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+	AkConstantBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinConstantBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_CONSTANT | AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
@@ -83,8 +83,8 @@ public:
 class AkStructuredBuffer : public AkBuffer
 {
 public:
-	AkStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
-		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	AkStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
@@ -96,8 +96,8 @@ public:
 class AkRWStructuredBuffer : public AkBuffer
 {
 public:
-	AkRWStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
-		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_ALLOW_UNORDERED_ACCESS | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	AkRWStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_ALLOW_UNORDERED_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
@@ -109,7 +109,7 @@ public:
 class AkVertexBuffer : public AkBuffer
 {
 public:
-	AkVertexBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+	AkVertexBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_VERTEX | AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
 	{ }
 };
@@ -117,7 +117,7 @@ public:
 class AkIndexBufferBase : public AkBuffer
 {
 public:
-	AkIndexBufferBase(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+	AkIndexBufferBase(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_INDEX | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
 	{ }
 

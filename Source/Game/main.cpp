@@ -26,7 +26,6 @@ struct QuadMaterial
 struct UnlitMaterial
 {
 	glm::vec4 color;
-	glm::mat4 viewProjection;
 	int32_t diffuseHandle;
 };
 
@@ -35,8 +34,6 @@ AkModel* m_Model = nullptr;
 AkShader* m_Shader = nullptr;
 AkTexture* m_Texture = nullptr;
 AkMaterial* m_Material = nullptr;
-AkConstantBuffer* m_PrimitiveMaterialBuffer = nullptr;
-
 AkShaderCompiler m_ShaderCompiler = {};
 
 static void OnEngineStart()
@@ -55,18 +52,12 @@ static void OnEngineStart()
 		std::unique_ptr<AkModelDecoderInterface> modelDecoder = AkModelDecoder::Decode("Resources/Models/Test.gltf");
 		m_Model = new AkModel(modelDecoder);
 
-		glm::uvec2 windowSize = m_Engine->GetMainWindow()->GetSize();
-		glm::mat4 projection = glm::perspectiveFov(glm::radians(75.f), static_cast<float>(windowSize.x), static_cast<float>(windowSize.y), 0.001f, 1000.f);
-		glm::mat4 view = glm::lookAt(glm::vec3(0.f, 10.f, -10.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-
 		UnlitMaterial primitiveMaterial =
 		{
 			.color = glm::vec4(1.f, 1.f, 1.f, 1.f),
-			.viewProjection = projection * view,
 			.diffuseHandle = m_Texture->GetBindlessIndex()
 		};
-		m_PrimitiveMaterialBuffer = new AkConstantBuffer(primitiveMaterial);
-		m_Material->SetConstantBuffer(m_PrimitiveMaterialBuffer, 0);
+		m_Material->SetData(primitiveMaterial);
 	}
 	catch (const std::exception& exception)
 	{
@@ -78,14 +69,12 @@ static void OnEngineStart()
 static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBuffer)
 {
 	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::UNDEFINED, AkResourceState::RENDER_TARGET);
-
 	commandBuffer->BeginRendering(backBuffer);
 
 	for (const AkMesh& mesh : m_Model->GetMeshes())
 		commandBuffer->DrawMesh(const_cast<AkMesh*>(&mesh), m_Material);
 
 	commandBuffer->EndRendering();
-
 	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::RENDER_TARGET, AkResourceState::PRESENT);
 }
 
@@ -95,7 +84,6 @@ static void OnEngineShutdown()
 	delete m_Shader;
 	delete m_Texture;
 	delete m_Material;
-	delete m_PrimitiveMaterialBuffer;
 }
 
 int main(int /*argc*/, char** /*argv*/)

@@ -12,7 +12,7 @@ namespace vk
 class AkBindlessResourcesManager
 {
 public:
-	static constexpr int32_t kMaxBindlessResources = std::numeric_limits<int16_t>::max();
+	static constexpr int32_t kMaxBindlessResources = std::numeric_limits<uint16_t>::max();
 	static constexpr int32_t kInvalidBindlessIndex = -1;
 
 	static void Initialize();

@@ -413,7 +413,9 @@ bool AkDevice::CreateLogicalDevices()
 		vk::PhysicalDeviceDynamicRenderingFeatures, 
 		vk::PhysicalDeviceBufferDeviceAddressFeatures, 
 		vk::PhysicalDeviceDescriptorIndexingFeatures,
-		vk::PhysicalDeviceShaderDrawParameterFeatures>();
+		vk::PhysicalDeviceShaderDrawParameterFeatures,
+		vk::PhysicalDeviceScalarBlockLayoutFeatures,
+		vk::PhysicalDeviceUniformBufferStandardLayoutFeatures>();
 	const vk::PhysicalDeviceSynchronization2Features& sync2Feature = features.get<vk::PhysicalDeviceSynchronization2Features>();
 	
 	if (!sync2Feature.synchronization2)
@@ -447,6 +449,20 @@ bool AkDevice::CreateLogicalDevices()
 	if (!shaderDrawParameters.shaderDrawParameters)
 	{
 		AkLogError("Required feature '{}' is not supported", VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME);
+		return false;
+	}
+
+	const vk::PhysicalDeviceScalarBlockLayoutFeatures& scalarBlockLayout = features.get<vk::PhysicalDeviceScalarBlockLayoutFeatures>();
+	if (!scalarBlockLayout.scalarBlockLayout)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
+		return false;
+	}
+
+	const vk::PhysicalDeviceUniformBufferStandardLayoutFeatures& uniformStandardLayout = features.get<vk::PhysicalDeviceUniformBufferStandardLayoutFeatures>();
+	if (!uniformStandardLayout.uniformBufferStandardLayout)
+	{
+		AkLogError("Required feature '{}' is not supported", VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME);
 		return false;
 	}
 

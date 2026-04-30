@@ -153,6 +153,13 @@ struct AkCommandBufferStorage
 	vk::CommandBuffer commandBuffer = {};
 };
 
+struct AkDrawCallData
+{
+	int32_t material;
+	int32_t vertexBuffer;
+	uint32_t vertexBufferOffset;
+};
+
 AkCommandBuffer::AkCommandBuffer(const vk::CommandPool& commandPool, const vk::CommandBuffer& commandBuffer)
 {
 	m_Storage->commandPool = commandPool;
@@ -236,29 +243,26 @@ void AkCommandBuffer::EndRendering()
 
 void AkCommandBuffer::DrawMesh(AkMesh* mesh, AkMaterial* material)
 {
-	struct MeshDataPushConstants
-	{
-		uint32_t offset;
-		int32_t vertexBuffer;
-	};
-
 	AkShader* shader = material->GetShader();
 	const vk::PipelineLayout& pipelineLayout = shader->GetPipelineLayout();
 	AkPipelineStateObject* pso = AkPipelineStateManager::GetPipelineStateObject(material, m_CurrentRenderTarget, mesh->GetPrimitiveType());
 
-	const std::vector<vk::DescriptorSet>& materialDescriptorSets = material->GetDescriptorSets();
 	std::vector<vk::DescriptorSet> descriptorSets = { AkBindlessResourcesManager::GetDescriptorSet() };
-	descriptorSets.insert(descriptorSets.end(), materialDescriptorSets.begin(), materialDescriptorSets.end());
+
+	const std::vector<vk::DescriptorSet>& materialDescriptorSets = material->GetDescriptorSets();
+	if (!materialDescriptorSets.empty())
+		descriptorSets.insert(descriptorSets.end(), materialDescriptorSets.begin(), materialDescriptorSets.end());
 
 	m_Storage->commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pso->GetPipeline());
 	m_Storage->commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, shader->GetPipelineLayout(), 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 
-	const MeshDataPushConstants meshDataPushConstants =
+	const AkDrawCallData meshDataPushConstants =
 	{
-		.offset = mesh->GetVertexOffset(),
-		.vertexBuffer = mesh->GetVertexBuffer()->GetBindlessIndex()
+		.material = material->GetBindlessOffset(),
+		.vertexBuffer = mesh->GetVertexBuffer()->GetBindlessIndex(),
+		.vertexBufferOffset = mesh->GetVertexOffset()
 	};
-	m_Storage->commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eAll, 0, sizeof(MeshDataPushConstants), &meshDataPushConstants);
+	m_Storage->commandBuffer.pushConstants(pipelineLayout, vk::ShaderStageFlagBits::eAll, 0, sizeof(AkDrawCallData), &meshDataPushConstants);
 
 	AkIndexBufferBase* indexBuffer = mesh->GetIndexBuffer();
 	m_Storage->commandBuffer.bindIndexBuffer(indexBuffer->GetBuffer(), 0, GetIndexType(indexBuffer->GetType()));
@@ -270,9 +274,11 @@ void AkCommandBuffer::DrawPrimitive(AkMaterial* material, const AkPrimitiveType 
 	AkShader* shader = material->GetShader();
 	AkPipelineStateObject* pso = AkPipelineStateManager::GetPipelineStateObject(material, m_CurrentRenderTarget, primitiveType);
 
-	const std::vector<vk::DescriptorSet>& materialDescriptorSets = material->GetDescriptorSets();
 	std::vector<vk::DescriptorSet> descriptorSets = { AkBindlessResourcesManager::GetDescriptorSet() };
-	descriptorSets.insert(descriptorSets.end(), materialDescriptorSets.begin(), materialDescriptorSets.end());
+
+	const std::vector<vk::DescriptorSet>& materialDescriptorSets = material->GetDescriptorSets();
+	if(!materialDescriptorSets.empty())
+		descriptorSets.insert(descriptorSets.end(), materialDescriptorSets.begin(), materialDescriptorSets.end());
 
 	m_Storage->commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pso->GetPipeline());
 	m_Storage->commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, shader->GetPipelineLayout(), 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);

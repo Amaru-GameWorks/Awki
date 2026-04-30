@@ -7,6 +7,7 @@
 
 #include "RHI/UploadManager.h"
 #include "RHI/Samplers/Sampler.h"
+#include "RHI/Pipeline/Material.h"
 #include "RHI/Pipeline/PipelineStateManager.h"
 #include "RHI/Pipeline/BindlessResourcesManager.h"
 #include "RHI/CommandBuffers/CommandBufferAllocator.h"
@@ -16,6 +17,8 @@ std::unique_ptr<AkSampler> gLinearClampSampler;
 
 void InitializeEngineResources()
 {
+	AkMaterial::InitializeGlobalBuffer();
+
 	AkSamplerDescriptor samplerDescriptor = {};
 	samplerDescriptor.filterMode = AkFilterMode::NEAREST;
 	samplerDescriptor.SetWrapMode(AkWrapMode::CLAMP_TO_EDGE);
@@ -30,6 +33,8 @@ void FreeEngineResources()
 {
 	gPointClampSampler = nullptr;
 	gLinearClampSampler = nullptr;
+
+	AkMaterial::DeinitializeGlobalBuffer();
 }
 
 Awki::Awki(const AkInstanceDescriptor& descriptor)

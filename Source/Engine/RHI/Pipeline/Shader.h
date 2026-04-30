@@ -24,6 +24,7 @@ struct AkSetReflection
 struct AkShaderReflection
 {
 	uint32_t pushConstantSize = 0;
+	uint32_t materialDataSize = 0;
 	uint32_t constantBuffersCount = 0;
 	std::unordered_map<uint32_t, AkSetReflection> descriptorSets = {};
 };

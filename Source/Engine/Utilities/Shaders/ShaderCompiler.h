@@ -30,7 +30,7 @@ public:
 
 private:
 	friend class AkShaderCompiler;
-	ForwardStorage<struct AkShaderByteCodeStorage, 96> m_Storage;
+	ForwardStorage<struct AkShaderByteCodeStorage, 104> m_Storage;
 };
 
 class AkShaderCompiler

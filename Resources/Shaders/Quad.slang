@@ -25,7 +25,7 @@ struct VSOutput
 struct QuadMaterial
 {
     float4 color;
-    BTexture texture;
+    TextureHandle<Texture2D> texture;
 };
 
 ParameterBlock<QuadMaterial> gMaterial;
@@ -44,10 +44,10 @@ float4 main(VSOutput input)
 {
     float4 color = gMaterial.color;
 
-    if (gMaterial.texture != -1)
+    if (gMaterial.texture.IsValid())
     {
-        TextureHandle<Texture2D> texture = { gMaterial.texture };
-        color *= texture().Sample(gLinearClampSampler, input.UV);
+        Texture2D texture = gMaterial.texture.Get();
+        color *= texture.Sample(gLinearClampSampler, input.UV);
     }
 
     return color;
