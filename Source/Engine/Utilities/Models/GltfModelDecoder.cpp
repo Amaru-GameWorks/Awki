@@ -23,7 +23,7 @@ AkGltfModelDecoder::AkGltfModelDecoder(const std::filesystem::path& path)
 	tg3_parse_options_init(&parseOption);
 	parseOption.parse_float32 = 1;
 
-	tg3_error_stack errors = { 0 };
+	tg3_error_stack errors = {};
 	if (tg3_parse_file(&m_Storage->model, &errors, modelPath, static_cast<uint32_t>(strlen(modelPath)), &parseOption) != TG3_OK)
 	{
 		std::string errorMessage = std::format("Failed to parse Gltf file at path '{}': ", modelPath);
@@ -127,7 +127,7 @@ void AkGltfModelDecoder::ProcessNode(const tg3_node& nodeInfo, AkModelNode& node
 		for (uint32_t i = 0; i < nodeInfo.children_count; ++i)
 			node.children.push_back(nodeInfo.children[i]);
 
-		for (int const& childIndex : node.children)
+		for (const uint32_t& childIndex : node.children)
 			ProcessNode(m_Storage->model.nodes[childIndex], m_Nodes[childIndex]);
 	}
 }

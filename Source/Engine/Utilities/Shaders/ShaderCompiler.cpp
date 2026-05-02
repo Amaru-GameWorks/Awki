@@ -6,6 +6,7 @@
 #include <slang/slang-com-ptr.h>
 
 #include <array>
+#include <cstring>
 
 static constexpr int32_t kSlangShiftKindUnorderedAccess = 0;
 static constexpr int32_t kSlangShiftKindSampler = 1;

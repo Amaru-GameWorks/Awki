@@ -221,7 +221,7 @@ void AkModelDecoderInterface::ProcessMeshes()
 		totalVertexSize += data.positions.size() * sizeof(AwkiVertex);
 	}
 
-	if (maxIndexValue <= USHRT_MAX)
+	if (maxIndexValue <= std::numeric_limits<uint16_t>::max())
 		m_IndexType = AkIndexType::U16;
 
 	const size_t indexTypeSize = (m_IndexType == AkIndexType::U32 ? sizeof(uint32_t) : sizeof(uint16_t));
