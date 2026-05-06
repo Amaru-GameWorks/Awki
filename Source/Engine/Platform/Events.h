@@ -127,10 +127,12 @@ enum class AkMouseButton : uint8_t
 
 class AkEvents
 {
-public:
+private:
+	friend class Awki;
 	static bool Initialize();
 	static void Deinitialize();
 
+public:
 	static void PollEvents();
 	static void TriggerQuit();
 	static bool ShouldClose();

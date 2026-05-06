@@ -121,7 +121,6 @@ public:
 		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_INDEX | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
 	{ }
 
-	virtual ~AkIndexBufferBase() = default;
 	virtual AkIndexType GetType() const = 0;
 	virtual uint32_t GetElementSize() const = 0;
 };

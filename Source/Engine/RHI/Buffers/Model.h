@@ -1,4 +1,5 @@
 #pragma once
+#include "RHI/Buffers/Buffer.h"
 #include "RHI/Pipeline/RasterizerState.h"
 
 #include <memory>
@@ -35,6 +36,6 @@ public:
 
 private:
 	std::vector<AkMesh> m_Meshes;
-	std::unique_ptr<class AkVertexBuffer> m_VertexBuffer = nullptr;
-	std::unique_ptr<class AkIndexBufferBase> m_IndexBuffer = nullptr;
+	std::unique_ptr<AkVertexBuffer> m_VertexBuffer = nullptr;
+	std::unique_ptr<AkIndexBufferBase> m_IndexBuffer = nullptr;
 };

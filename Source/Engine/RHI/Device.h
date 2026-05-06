@@ -14,9 +14,12 @@ typedef struct VmaAllocator_T* VmaAllocator;
 
 class AkDevice
 {
-public:
+private:
+	friend class Awki;
 	static bool Initialize();
 	static void Deinitialize();
+
+public:
 	static void WaitIdle();
 
 	static const vk::Instance& GetInstance();

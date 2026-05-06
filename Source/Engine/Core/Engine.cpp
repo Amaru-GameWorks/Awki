@@ -5,6 +5,7 @@
 #include "Platform/Window.h"
 #include "Platform/Events.h"
 
+#include "ECS/Registry.h"
 #include "RHI/UploadManager.h"
 #include "RHI/Samplers/Sampler.h"
 #include "RHI/Pipeline/Material.h"
@@ -50,8 +51,10 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 	if (!AkDevice::Initialize())
 		throw std::runtime_error("Failed to initialize RHI Device!");
 
+	AkRegistry::Initialize();
 	AkPipelineStateManager::Initialize();
 	AkBindlessResourcesManager::Initialize();
+
 	InitializeEngineResources();
 
 	m_Window = std::make_unique<AkWindow>(descriptor.windowDescriptor);
@@ -63,6 +66,7 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 Awki::~Awki()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
+	AkDevice::WaitIdle();
 
 	m_Swapchain = nullptr;
 	m_Window = nullptr;
@@ -84,7 +88,10 @@ void Awki::Run()
 
 	while (!AkEvents::ShouldClose())
 	{
+		//GameThread
 		AkEvents::PollEvents();
+
+		// RenderThread
 		if (m_Swapchain->Prepare())
 		{
 			AkCommandBuffer* currentCommandBuffer = commandBuffers[m_Swapchain->GetCurrentFrameIndex()];

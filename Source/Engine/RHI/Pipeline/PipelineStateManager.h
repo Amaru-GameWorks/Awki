@@ -3,9 +3,11 @@
 
 class AkPipelineStateManager
 {
-public:
+private:
+	friend class Awki;
 	static void Initialize();
 	static void Deinitialize();
 
+public:
 	static class AkPipelineStateObject* GetPipelineStateObject(class AkMaterial* material, class AkRenderTarget* renderTarget, const AkPrimitiveType primitiveType);
 };

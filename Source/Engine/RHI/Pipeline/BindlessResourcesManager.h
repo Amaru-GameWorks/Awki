@@ -11,12 +11,14 @@ namespace vk
 
 class AkBindlessResourcesManager
 {
+private:
+	friend class Awki;
+	static void Initialize();
+	static void Deinitialize();
+
 public:
 	static constexpr int32_t kMaxBindlessResources = std::numeric_limits<uint16_t>::max();
 	static constexpr int32_t kInvalidBindlessIndex = -1;
-
-	static void Initialize();
-	static void Deinitialize();
 
 	static void AddBuffer(class AkBuffer* buffer);
 	static void AddTexture(class AkTexture* texture);

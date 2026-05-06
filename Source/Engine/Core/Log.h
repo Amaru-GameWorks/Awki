@@ -33,10 +33,12 @@ enum class AkLogLevel : uint8_t
 
 class AkLog
 {
-public:
+private:
+	friend class Awki;
 	static bool Initialize();
 	static void Deinitialize();
 
+public:
 	template<typename ...Arguments>
 	static void AddLogEntry(AkLogLevel logLevel, const std::source_location& sourceLocation, const std::format_string<Arguments...>& format, Arguments&&... arguments)
 	{
