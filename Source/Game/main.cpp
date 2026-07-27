@@ -3,25 +3,20 @@
 
 #include <Platform/Events.h>
 #include <RHI/Buffers/Model.h>
-#include <RHI/Buffers/Buffer.h>
 #include <RHI/Pipeline/Shader.h>
 #include <RHI/Textures/Texture.h>
 #include <RHI/Pipeline/Material.h>
-#include <RHI/Textures/RenderTarget.h>
-#include <RHI/CommandBuffers/CommandBuffer.h>
 #include <Utilities/Shaders/ShaderCompiler.h>
 #include <Utilities/Models/GltfModelDecoder.h>
 #include <Utilities/Textures/TextureDecoder.h>
+#include <Graphics/RenderPipeline/StandardRenderPipeline.h>
+
+#include <ECS/GameEntity.h>
+#include <ECS/Components/Camera.h>
+#include <ECS/Components/Transform.h>
 
 #include <print>
 #include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-
-struct QuadMaterial
-{
-	glm::vec4 color;
-	int32_t textureHandle;
-};
 
 struct UnlitMaterial
 {
@@ -35,6 +30,8 @@ AkShader* m_Shader = nullptr;
 AkTexture* m_Texture = nullptr;
 AkMaterial* m_Material = nullptr;
 AkShaderCompiler m_ShaderCompiler = {};
+
+AkGameEntity m_CameraId = {};
 
 static void OnEngineStart()
 {
@@ -58,24 +55,19 @@ static void OnEngineStart()
 			.diffuseHandle = m_Texture->GetBindlessIndex()
 		};
 		m_Material->SetData(primitiveMaterial);
+
+		m_CameraId = AkRegistry::CreateEntity();
+		m_CameraId.AddComponent<AkTransform>();
+		
+		AkCamera* camera = m_CameraId.AddComponent<AkCamera>();
+		camera->SetRenderOrder(0);
+		camera->SetRenderPipelineHash<AkStandardRenderPipeline>();
 	}
 	catch (const std::exception& exception)
 	{
 		AkLogError("Failed to initialize resources: {}", exception.what());
 		AkEvents::TriggerQuit();
 	}
-}
-
-static void OnFrameRender(AkCommandBuffer* commandBuffer, AkRenderTarget* backBuffer)
-{
-	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::UNDEFINED, AkResourceState::RENDER_TARGET);
-	commandBuffer->BeginRendering(backBuffer);
-
-	for (const AkMesh& mesh : m_Model->GetMeshes())
-		commandBuffer->DrawMesh(const_cast<AkMesh*>(&mesh), m_Material);
-
-	commandBuffer->EndRendering();
-	commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::RENDER_TARGET, AkResourceState::PRESENT);
 }
 
 static void OnEngineShutdown()
@@ -104,7 +96,6 @@ int main(int /*argc*/, char** /*argv*/)
 
 		m_Engine = new Awki(descriptor);
 		m_Engine->GetOnEngineStart().Add(OnEngineStart);
-		m_Engine->GetOnFrameRender().Add(OnFrameRender);
 		m_Engine->GetOnEngineShutdown().Add(OnEngineShutdown);
 	}
 	catch (const std::exception& exception)

@@ -86,5 +86,5 @@ public:
 private:
 	int32_t m_BindlessIndex = -1;
 	AkSamplerDescriptor m_Descriptor;
-	ForwardStorage<struct AkSamplerStorage, 8> m_Storage;
+	AkForwardStorage<struct AkSamplerStorage, 8> m_Storage;
 };

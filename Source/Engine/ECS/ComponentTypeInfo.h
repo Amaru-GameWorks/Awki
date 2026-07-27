@@ -25,17 +25,7 @@ private:
 
 template<typename T>
 struct AkComponentTypeInfo
-{
-	static const constexpr char* Name()
-	{
-		return "";
-	}
-
-	static constexpr size_t TypeId()
-	{
-		return 0;
-	}
-};
+{ };
 
 template<typename T>
 struct AkIsComponent : std::false_type {};

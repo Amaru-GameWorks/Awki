@@ -30,10 +30,10 @@ public:
 		AkAssert(m_ComponentPools.contains(typeId), "ComponentPool has not been created for {}", AkComponentTypeInfo<T>::Name());
 
 		AkComponentPool<T>* pool = static_cast<AkComponentPool<T>*>(m_ComponentPools[typeId].get());
-		if (pool->Contains(entity.id))
-			return &pool->Get(entity.id);
+		if (pool->Contains(entity))
+			return &pool->Get(entity);
 
-		return &pool->Add(entity.id);
+		return &pool->Add(entity);
 	}
 
 	template <typename T>
@@ -45,10 +45,10 @@ public:
 		AkAssert(m_ComponentPools.contains(typeId), "ComponentPool has not been created for {}", AkComponentTypeInfo<T>::Name());
 
 		AkComponentPool<T>* pool = static_cast<AkComponentPool<T>*>(m_ComponentPools[typeId].get());
-		if (!pool->Contains(entity.id))
+		if (!pool->Contains(entity))
 			return nullptr;
 
-		return &pool->Get(entity.id);
+		return &pool->Get(entity);
 	}
 
 	template <typename T>
@@ -60,7 +60,7 @@ public:
 		AkAssert(m_ComponentPools.contains(typeId), "ComponentPool has not been created for {}", AkComponentTypeInfo<T>::Name());
 
 		AkComponentPool<T>* pool = static_cast<AkComponentPool<T>*>(m_ComponentPools[typeId].get());
-		pool->Remove(entity.id);
+		pool->Remove(entity);
 	}
 
 	template <typename ...T>

@@ -41,5 +41,5 @@ void AkRegistry::DestroyEntity(AkEntity entity)
 	m_FreeIndices.push(entity.id);
 
 	for (auto& [typeId, pool] : m_ComponentPools)
-		pool->Remove(entity.id);
+		pool->Remove(entity);
 }

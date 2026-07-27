@@ -1,7 +1,8 @@
 #pragma once
 #include "Utilities/ForwardStorage.h"
-#include "RHI/Pipeline/ResourceStates.h"
+#include "RHI/Pipeline/ResourceState.h"
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
 #include <vector>
@@ -76,10 +77,11 @@ public:
 	const std::optional<struct vk::RenderingAttachmentInfo>& GetDepthStencilAttachment() const;
 	
 	size_t GetHash() const { return m_Hash; }
+	glm::uvec2 GetSize() const;
 
 private:
 	size_t m_Hash = 0;
-	ForwardStorage<struct AkRenderTargetStorage, 112> m_Storage;
+	AkForwardStorage<struct AkRenderTargetStorage, 112> m_Storage;
 	
 	std::vector<AkRenderTargetAttachmentInfo> m_ColorAttachments = {};
 	std::optional<AkRenderTargetAttachmentInfo> m_DepthStencilAttachment = std::nullopt;

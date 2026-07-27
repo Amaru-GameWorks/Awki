@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/Device.h"
+#include "Utilities/Hash.h"
 #include "Utilities/Math.h"
 #include "Utilities/ForwardStorage.h"
 #include "RHI/Pipeline/RasterizerState.h"
@@ -36,11 +37,27 @@ struct AkBufferDescriptor
 	AkBufferFlags flags = 0;
 };
 
+namespace std
+{
+	template <>
+	struct hash<AkBufferDescriptor>
+	{
+		size_t operator()(const AkBufferDescriptor& bufferDescriptor) const
+		{
+			size_t hash = 0;
+			HashCombine(hash, bufferDescriptor.size);
+			HashCombine(hash, bufferDescriptor.flags);
+			return hash;
+		}
+	};
+}
+
 class AkBuffer
 {
 	friend class AkBindlessResourcesManager;
 
 public:
+	AkBuffer(const AkBufferDescriptor& descriptor, const vk::Buffer& buffer);
 	AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data = nullptr);
 	~AkBuffer();
 
@@ -51,12 +68,15 @@ public:
 	vk::DeviceAddress GetDeviceAddress() const;
 	const vk::Buffer& GetBuffer() const;
 
+	void SetDebugName(const std::string& name);
+
 private:
 
+	bool m_FromNative = false;
 	int32_t m_BindlessIndex = -1;
 	AkBufferDescriptor m_Descriptor = {};
 	uint8_t* m_MappedDataPointer = nullptr;
-	ForwardStorage<struct AkBufferStorage, 24> m_Storage;
+	AkForwardStorage<struct AkBufferStorage, 24> m_Storage;
 };
 
 class AkStagingBuffer : public AkBuffer

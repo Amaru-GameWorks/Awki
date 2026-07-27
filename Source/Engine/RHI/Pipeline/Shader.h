@@ -43,5 +43,5 @@ public:
 
 private:
 	AkShaderReflection m_Reflection;
-	ForwardStorage<struct AkShaderStorage, 48> m_Storage;
+	AkForwardStorage<struct AkShaderStorage, 48> m_Storage;
 };

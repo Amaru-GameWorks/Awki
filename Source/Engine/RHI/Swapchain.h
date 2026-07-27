@@ -22,7 +22,7 @@ private:
 	uint32_t m_CurrentBackBufferIndex = 0;
 
 	class AkWindow* m_Window = nullptr;
-	ForwardStorage<struct AkSwapchainStorage, 168> m_Storage;
+	AkForwardStorage<struct AkSwapchainStorage, 168> m_Storage;
 	std::vector<std::unique_ptr<class AkTexture>> m_BackBufferTextures;
 	std::vector<std::unique_ptr<class AkRenderTarget>> m_BackBufferRenderTargets;
 

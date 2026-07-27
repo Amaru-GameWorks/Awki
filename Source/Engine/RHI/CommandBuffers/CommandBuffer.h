@@ -1,6 +1,6 @@
 #pragma once
 #include "Utilities/ForwardStorage.h"
-#include "RHI/Pipeline/ResourceStates.h"
+#include "RHI/Pipeline/ResourceState.h"
 #include "RHI/Pipeline/RasterizerState.h"
 
 #include <glm/vec4.hpp>
@@ -10,6 +10,13 @@ namespace vk
 	class CommandPool; 
 	class CommandBuffer; 
 }
+
+struct AkResourceTransition
+{
+	void* resource = nullptr;
+	AkResourceState sourceState = {};
+	AkResourceState destinationState = {};
+};
 
 class AkCommandBuffer
 {
@@ -32,6 +39,8 @@ public:
 	void TransitionRenderTargetDepthAttachment(class AkRenderTarget* renderTarget, const AkResourceState sourceState, const AkResourceState destinationState);
 	void TransitionTexture(class AkTexture* texture, const AkResourceState sourceState, const AkResourceState destinationState);
 	void TransitionBuffer(class AkBuffer* buffer, const AkResourceState sourceState, const AkResourceState destinationState);
+
+	void TransitionResources(const std::vector<AkResourceTransition>& buffers, const std::vector<AkResourceTransition>& textures);
 	void TransitionResources(const std::vector<class AkBuffer*>& buffers, const std::vector<class AkTexture*>& textures, const AkResourceState sourceState, const AkResourceState destinationState);
 	
 	void CopyBufferToBuffer(class AkBuffer* source, class AkBuffer* destination, const size_t size, const size_t sourceOffset = 0, const size_t destinationOffset = 0);
@@ -43,5 +52,5 @@ public:
 
 private:
 	class AkRenderTarget* m_CurrentRenderTarget = nullptr;
-	ForwardStorage<struct AkCommandBufferStorage, 16> m_Storage;
+	AkForwardStorage<struct AkCommandBufferStorage, 16> m_Storage;
 };

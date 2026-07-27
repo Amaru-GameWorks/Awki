@@ -3,16 +3,16 @@
 #include <cstddef>
 
 template<typename T, size_t Size>
-class ForwardStorage
+class AkForwardStorage
 {
 public:
-	ForwardStorage()
+	AkForwardStorage()
 	{
 		static_assert(Size >= sizeof(T), "Size mismatch in ForwardStorage");
 		new (this) T();
 	}
 
-	~ForwardStorage()
+	~AkForwardStorage()
 	{
 		this->operator->()->~T();
 	}

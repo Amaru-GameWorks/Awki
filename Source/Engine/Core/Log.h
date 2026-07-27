@@ -1,5 +1,8 @@
 #pragma once
+#include "Utilities/PrintFormat/GLM.h"
+
 #include <format>
+#include <cstdlib>
 #include <string_view>
 #include <source_location>
 
@@ -16,11 +19,30 @@
 #	define DEBUG_BREAK()
 #endif
 
+constexpr void UnsafeExit()
+{
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4702)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
+#endif
+
+	std::terminate();
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
+}
+
 #define AkLogInfo(format, ...)		{ AkLog::AddLogEntry(AkLogLevel::INFO, std::source_location::current(), format , ##__VA_ARGS__); }
 #define AkLogTrace(format, ...)		{ AkLog::AddLogEntry(AkLogLevel::TRACE, std::source_location::current(), format , ##__VA_ARGS__); }
 #define AkLogWarning(format, ...)	{ AkLog::AddLogEntry(AkLogLevel::WARNING, std::source_location::current(), format , ##__VA_ARGS__); }
 #define AkLogError(format, ...)		{ AkLog::AddLogEntry(AkLogLevel::ERROR, std::source_location::current(), format , ##__VA_ARGS__); }
-#define AkLogCritical(format, ...)	{ AkLog::AddLogEntry(AkLogLevel::CRITICAL, std::source_location::current(), format , ##__VA_ARGS__); DEBUG_BREAK(); }
+#define AkLogCritical(format, ...)	{ AkLog::AddLogEntry(AkLogLevel::CRITICAL, std::source_location::current(), format , ##__VA_ARGS__); DEBUG_BREAK(); UnsafeExit(); }
 
 enum class AkLogLevel : uint8_t
 {

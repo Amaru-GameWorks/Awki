@@ -34,7 +34,7 @@ public:
 private:
 	size_t m_Hash = 0;
 	int32_t m_BindlessOffset = -1;
-	ForwardStorage<struct AkMaterialStorage, 40> m_Storage;
+	AkForwardStorage<struct AkMaterialStorage, 40> m_Storage;
 	
 	class AkShader* m_Shader = nullptr;
 	AkRasterizerState m_RasterizerState = {};

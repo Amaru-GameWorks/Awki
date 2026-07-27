@@ -104,7 +104,7 @@ extern vk::ImageAspectFlags GetImageAspectMask(const AkPixelFormat format)
 	return aspectMask;
 }
 
-constexpr vk::ImageViewType GetImageViewType(const AkTextureType type)
+extern vk::ImageViewType GetImageViewType(const AkTextureType type)
 {
 	switch (type)
 	{
@@ -121,7 +121,7 @@ constexpr vk::ImageViewType GetImageViewType(const AkTextureType type)
 	}
 }
 
-constexpr vk::ImageType GetImageType(const AkTextureType& type)
+extern vk::ImageType GetImageType(const AkTextureType type)
 {
 	switch (type)
 	{
@@ -144,7 +144,7 @@ constexpr vk::ImageType GetImageType(const AkTextureType& type)
 	}
 }
 
-constexpr vk::ImageUsageFlags GetUsageFlags(const AkTextureFlags& flags)
+extern vk::ImageUsageFlags GetTextureUsageFlags(const AkTextureFlags flags)
 {
 	vk::ImageUsageFlags usageFlags = {};
 
@@ -169,7 +169,7 @@ constexpr vk::ImageUsageFlags GetUsageFlags(const AkTextureFlags& flags)
 	return usageFlags;
 }
 
-constexpr vk::ImageCreateFlags GetImageCreateFlags(const AkTextureType& type)
+extern vk::ImageCreateFlags GetImageCreateFlags(const AkTextureType type)
 {
 	switch (type)
 	{
@@ -188,6 +188,40 @@ constexpr vk::ImageCreateFlags GetImageCreateFlags(const AkTextureType& type)
 			AkLogCritical("Texture type not registered in this function");
 			return {};
 	}
+}
+
+extern size_t CalculateTextureSize(const AkTextureDescriptor& descriptor)
+{
+	size_t size = 0;
+	size_t offset = 0;
+	bool isBlockCompressed = IsBlockCompressedPixelFormat(descriptor.format);
+	for (uint32_t j = 0; j < descriptor.slices; ++j)
+	{
+		for (uint32_t i = 0; i < descriptor.mips; ++i)
+		{
+			size_t mipWidth = static_cast<size_t>(descriptor.width >> i);
+			size_t mipHeight = static_cast<size_t>(descriptor.height >> i);
+
+			size_t mipSize = 0;
+			if (isBlockCompressed)
+			{
+				size_t numBlocksWide = (mipWidth + 3) / 4;
+				size_t numBlocksHeight = (mipHeight + 3) / 4;
+				mipSize = numBlocksWide * numBlocksHeight * GetCompressedBlockSize(descriptor.format);
+			}
+			else
+			{
+				size_t rowBytes = mipWidth * GetPixelSize(descriptor.format);
+				mipSize = rowBytes * mipHeight;
+			}
+
+			mipSize *= static_cast<size_t>(descriptor.depth);
+			offset += mipSize;
+			size += mipSize;
+		}
+	}
+
+	return size;
 }
 
 size_t CalculateTextureSizeInfo(const AkTextureDescriptor& descriptor, std::vector<AkMipInfo>& mipsInfo)
@@ -255,7 +289,7 @@ AkTexture::AkTexture(const AkTextureDescriptor& descriptor, uint8_t* data)
 	m_Size = CalculateTextureSizeInfo(m_Descriptor, m_MipsInfo);
 
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
-	const vk::ImageUsageFlags usageFlags = GetUsageFlags(m_Descriptor.flags);
+	const vk::ImageUsageFlags usageFlags = GetTextureUsageFlags(m_Descriptor.flags);
 	bool autoResolveMSAA = m_Descriptor.msaa > AkMSAA::X1 && m_Descriptor.flags & AkTextureFlags_AUTO_RESOLVE_MSAA;
 
 	vk::ImageCreateInfo imageCreateInfo =
@@ -373,6 +407,20 @@ const vk::ImageView& AkTexture::GetImageView(uint32_t mip, uint32_t slice)
 	AkAssert(mip <= m_Descriptor.mips && slice <= m_Descriptor.slices, "Subresource index out of range");
 	const uint32_t index = (slice * m_Descriptor.mips) + mip;
 	return m_Storage->views[index];
+}
+
+void AkTexture::SetDebugName([[maybe_unused]] const std::string& name)
+{
+#if DEBUG
+	const vk::Device& device = AkDevice::GetDevice();
+	const vk::DebugUtilsObjectNameInfoEXT nameInfo =
+	{
+		.objectType = m_Storage->image.objectType,
+		.objectHandle = reinterpret_cast<uint64_t>(static_cast<VkImage>(m_Storage->image)),
+		.pObjectName = name.c_str()
+	};
+	device.setDebugUtilsObjectNameEXT(nameInfo);
+#endif
 }
 
 void AkTexture::CreateImageViews()

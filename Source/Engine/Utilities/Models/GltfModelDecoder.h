@@ -9,7 +9,7 @@ public:
 	~AkGltfModelDecoder();
 
 private:
-	ForwardStorage<struct AkGltfModelStorage, 472> m_Storage;
+	AkForwardStorage<struct AkGltfModelStorage, 472> m_Storage;
 
 	void ProcessNode(const struct tg3_node& nodeInfo, AkModelNode& node);
 	void ProcessMesh(const struct tg3_mesh& meshInfo, AkModelNode& node);

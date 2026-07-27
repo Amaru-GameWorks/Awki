@@ -2,12 +2,11 @@
 #include "Version.h"
 #include "RHI/Swapchain.h"
 #include "Platform/Window.h"
+#include "Scheduler/Scheduler.h"
 #include "Utilities/Delegates.h"
 
 #include <memory>
 #include <string_view>
-
-AK_DECLARE_CUSTOM_DELEGATE(AkOnFrameRender, class AkCommandBuffer*, class AkRenderTarget*);
 
 struct AkInstanceDescriptor
 {
@@ -23,11 +22,10 @@ public:
 
 	Awki(const AkInstanceDescriptor& descriptor);
 	~Awki();
-	
+
 	void Run();
 	AkSimpleDelegate& GetOnEngineStart() { return m_OnEngineStart; }
 	AkSimpleDelegate& GetOnEngineShutdown() { return m_OnEngineShutdown; }
-	AkOnFrameRender& GetOnFrameRender() { return m_OnFrameRender; }
 
 	const AkWindow* GetMainWindow() const { return m_Window.get(); }
 	const AkSwapchain* GetMainSwapchain() const { return m_Swapchain.get(); }
@@ -35,8 +33,8 @@ public:
 private:
 	AkSimpleDelegate m_OnEngineStart = {};
 	AkSimpleDelegate m_OnEngineShutdown = {};
-	AkOnFrameRender m_OnFrameRender = {};
 
+	AkScheduler m_Scheduler = {};
 	std::unique_ptr<AkWindow> m_Window = nullptr;
 	std::unique_ptr<AkSwapchain> m_Swapchain = nullptr;
 };

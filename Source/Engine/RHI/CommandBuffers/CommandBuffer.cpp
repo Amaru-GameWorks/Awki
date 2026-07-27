@@ -384,6 +384,77 @@ void AkCommandBuffer::TransitionBuffer(AkBuffer* buffer, const AkResourceState s
 	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
 }
 
+void AkCommandBuffer::TransitionResources(const std::vector<AkResourceTransition>& buffers, const std::vector<AkResourceTransition>& textures)
+{
+	std::vector<vk::BufferMemoryBarrier2> bufferBarriers = {};
+	bufferBarriers.reserve(buffers.size());
+
+	std::vector<vk::ImageMemoryBarrier2> imageBarriers = {};
+	imageBarriers.reserve(textures.size());
+
+	for (const AkResourceTransition& transition : buffers)
+	{
+		const vk::PipelineStageFlags2 sourceStageFlags = GetPipelineStageFlags(transition.sourceState);
+		const vk::AccessFlags2 sourceAccessMask = GetAccessMask(transition.sourceState);
+
+		const vk::PipelineStageFlags2 destinationStageFlags = GetPipelineStageFlags(transition.destinationState);
+		const vk::AccessFlags2 destinationAccessMask = GetAccessMask(transition.destinationState);
+
+		vk::BufferMemoryBarrier2& bufferMemoryBarrier = bufferBarriers.emplace_back();
+		bufferMemoryBarrier.srcStageMask = sourceStageFlags;
+		bufferMemoryBarrier.srcAccessMask = sourceAccessMask;
+		bufferMemoryBarrier.dstStageMask = destinationStageFlags;
+		bufferMemoryBarrier.dstAccessMask = destinationAccessMask;
+		bufferMemoryBarrier.buffer = static_cast<AkBuffer*>(transition.resource)->GetBuffer();
+		bufferMemoryBarrier.offset = 0;
+		bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	}
+
+	for (const AkResourceTransition& transition : textures)
+	{
+		const vk::PipelineStageFlags2 sourceStageFlags = GetPipelineStageFlags(transition.sourceState);
+		const vk::AccessFlags2 sourceAccessMask = GetAccessMask(transition.sourceState);
+
+		const vk::PipelineStageFlags2 destinationStageFlags = GetPipelineStageFlags(transition.destinationState);
+		const vk::AccessFlags2 destinationAccessMask = GetAccessMask(transition.destinationState);
+
+		const vk::ImageLayout sourceImageLayout = GetImageLayout(transition.sourceState);
+		const vk::ImageLayout destinationImageLayout = GetImageLayout(transition.destinationState);
+
+		AkTexture* texture = static_cast<AkTexture*>(transition.resource);
+		const AkTextureDescriptor& descriptor = texture->GetDescriptor();
+		vk::ImageMemoryBarrier2& imageMemoryBarrier = imageBarriers.emplace_back();
+		imageMemoryBarrier.srcStageMask = sourceStageFlags;
+		imageMemoryBarrier.srcAccessMask = sourceAccessMask;
+		imageMemoryBarrier.dstStageMask = destinationStageFlags;
+		imageMemoryBarrier.dstAccessMask = destinationAccessMask;
+		imageMemoryBarrier.oldLayout = sourceImageLayout;
+		imageMemoryBarrier.newLayout = destinationImageLayout;
+		imageMemoryBarrier.image = texture->GetImage();
+		imageMemoryBarrier.subresourceRange =
+		{
+			.aspectMask = GetAspectMask(descriptor.format),
+			.levelCount = descriptor.mips,
+			.layerCount = descriptor.slices
+		};
+	}
+
+	vk::DependencyInfo barrierDependencyInfo = {};
+	if (!bufferBarriers.empty())
+	{
+		barrierDependencyInfo.bufferMemoryBarrierCount = static_cast<uint32_t>(bufferBarriers.size());
+		barrierDependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+	}
+
+	if (!imageBarriers.empty())
+	{
+		barrierDependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(imageBarriers.size());
+		barrierDependencyInfo.pImageMemoryBarriers = imageBarriers.data();
+	}
+
+	m_Storage->commandBuffer.pipelineBarrier2(barrierDependencyInfo);
+}
+
 void AkCommandBuffer::TransitionResources(const std::vector<class AkBuffer*>& buffers, const std::vector<class AkTexture*>& textures, const AkResourceState sourceState, const AkResourceState destinationState)
 {
 	std::vector<vk::BufferMemoryBarrier2> bufferBarriers = {};

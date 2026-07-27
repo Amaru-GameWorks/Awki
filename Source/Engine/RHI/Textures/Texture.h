@@ -1,5 +1,6 @@
 #pragma once
 #include "PixelFormats.h"
+#include "Utilities/Hash.h"
 #include "Utilities/ForwardStorage.h"
 
 #include <vector>
@@ -61,6 +62,28 @@ struct AkTextureDescriptor
 	AkMSAA msaa = AkMSAA::X1;
 };
 
+namespace std
+{
+	template <>
+	struct hash<AkTextureDescriptor>
+	{
+		size_t operator()(const AkTextureDescriptor& textureDescriptor) const
+		{
+			size_t hash = 0;
+			HashCombine(hash, textureDescriptor.width);
+			HashCombine(hash, textureDescriptor.height);
+			HashCombine(hash, textureDescriptor.depth);
+			HashCombine(hash, textureDescriptor.flags);
+			HashCombine(hash, textureDescriptor.type);
+			HashCombine(hash, textureDescriptor.format);
+			HashCombine(hash, textureDescriptor.mips);
+			HashCombine(hash, textureDescriptor.slices);
+			HashCombine(hash, textureDescriptor.msaa);
+			return hash;
+		}
+	};
+}
+
 struct AkMipInfo
 {
 	size_t size = 0;
@@ -84,6 +107,8 @@ public:
 	const vk::ImageView& GetImageView(uint32_t mip = 0, uint32_t slice = 0);
 	const AkTextureDescriptor& GetDescriptor() const { return m_Descriptor; }
 
+	void SetDebugName(const std::string& name);
+
 private:
 	bool m_FromNative = false;
 	AkTextureDescriptor m_Descriptor;
@@ -92,7 +117,7 @@ private:
 	int32_t m_BindlessIndex = -1;
 	std::vector<AkMipInfo> m_MipsInfo = {};
 
-	ForwardStorage<struct AkTextureStorage, 96> m_Storage;
+	AkForwardStorage<struct AkTextureStorage, 96> m_Storage;
 
 	void CreateImageViews();
 };

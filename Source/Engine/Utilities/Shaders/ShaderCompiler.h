@@ -30,7 +30,7 @@ public:
 
 private:
 	friend class AkShaderCompiler;
-	ForwardStorage<struct AkShaderByteCodeStorage, 104> m_Storage;
+	AkForwardStorage<struct AkShaderByteCodeStorage, 104> m_Storage;
 };
 
 class AkShaderCompiler
@@ -42,5 +42,5 @@ public:
 	AkShaderData CompileShader(const AkShaderCompileOptions& compileOptions);
 
 private:
-	ForwardStorage<struct AkShaderCompilerStorage, 16> m_Storage;
+	AkForwardStorage<struct AkShaderCompilerStorage, 16> m_Storage;
 };

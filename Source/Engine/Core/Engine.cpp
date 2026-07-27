@@ -11,7 +11,6 @@
 #include "RHI/Pipeline/Material.h"
 #include "RHI/Pipeline/PipelineStateManager.h"
 #include "RHI/Pipeline/BindlessResourcesManager.h"
-#include "RHI/CommandBuffers/CommandBufferAllocator.h"
 
 std::unique_ptr<AkSampler> gPointClampSampler;
 std::unique_ptr<AkSampler> gLinearClampSampler;
@@ -59,6 +58,9 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 
 	m_Window = std::make_unique<AkWindow>(descriptor.windowDescriptor);
 	m_Swapchain = std::make_unique<AkSwapchain>(m_Window.get());
+	
+	m_Scheduler.SetWindow(m_Window.get());
+	m_Scheduler.SetSwapchain(m_Swapchain.get());
 
 	AkLogInfo("{} {} initializing", descriptor.gameName, descriptor.gameVersion);
 }
@@ -84,33 +86,6 @@ Awki::~Awki()
 void Awki::Run()
 {
 	m_OnEngineStart.Broadcast();
-	const std::vector<AkCommandBuffer*> commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, m_Swapchain->GetBackBuffersCount());
-
-	while (!AkEvents::ShouldClose())
-	{
-		//GameThread
-		AkEvents::PollEvents();
-
-		// RenderThread
-		if (m_Swapchain->Prepare())
-		{
-			AkCommandBuffer* currentCommandBuffer = commandBuffers[m_Swapchain->GetCurrentFrameIndex()];
-			AkRenderTarget* currentBackBuffer = m_Swapchain->GetCurrentBackBufferRenderTarget();
-
-			currentCommandBuffer->Begin();
-			m_OnFrameRender.Broadcast(currentCommandBuffer, currentBackBuffer);
-			currentCommandBuffer->End();
-
-			if (AkUploadManager::HasPendingUploads())
-			{
-				AkUploadManager::FillCommandBuffer();
-				m_Swapchain->Present({ AkUploadManager::GetCommandBuffer(), currentCommandBuffer });
-			}
-			else
-				m_Swapchain->Present({ currentCommandBuffer });
-		}
-	}
-
-	AkDevice::WaitIdle();
+	m_Scheduler.Run();
 	m_OnEngineShutdown.Broadcast();
 }

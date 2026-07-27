@@ -6,7 +6,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
 
-constexpr vk::BufferUsageFlags GetUsageFlags(const AkBufferFlags flags)
+extern vk::BufferUsageFlags GetBufferUsageFlags(const AkBufferFlags flags)
 {
 	vk::BufferUsageFlags usageFlags = {};
 
@@ -41,6 +41,13 @@ struct AkBufferStorage
 	vk::DeviceAddress deviceAddress = {};
 };
 
+AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, const vk::Buffer& buffer)
+	: m_Descriptor(descriptor)
+{
+	m_FromNative = true;
+	m_Storage->buffer = buffer;
+}
+
 AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 	: m_Descriptor(descriptor)
 {
@@ -50,7 +57,7 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 	vk::BufferCreateInfo bufferCreateInfo = 
 	{
 		.size = m_Descriptor.size,
-		.usage = GetUsageFlags(m_Descriptor.flags),
+		.usage = GetBufferUsageFlags(m_Descriptor.flags),
 		.sharingMode = vk::SharingMode::eExclusive,
 	};
 
@@ -124,11 +131,14 @@ AkBuffer::~AkBuffer()
 	const vk::Device& device = AkDevice::GetDevice();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
 
-	if (m_Descriptor.flags & AkBufferFlags_CPU_ACCESS)
-		vmaUnmapMemory(allocator, m_Storage->allocation);
+	if (!m_FromNative)
+	{
+		if (m_Descriptor.flags & AkBufferFlags_CPU_ACCESS)
+			vmaUnmapMemory(allocator, m_Storage->allocation);
 
-	device.destroyBuffer(m_Storage->buffer);
-	vmaFreeMemory(allocator, m_Storage->allocation);
+		device.destroyBuffer(m_Storage->buffer);
+		vmaFreeMemory(allocator, m_Storage->allocation);
+	}
 }
 
 vk::DeviceAddress AkBuffer::GetDeviceAddress() const
@@ -139,4 +149,8 @@ vk::DeviceAddress AkBuffer::GetDeviceAddress() const
 const vk::Buffer& AkBuffer::GetBuffer() const
 {
 	return m_Storage->buffer;
+}
+
+void AkBuffer::SetDebugName(const std::string& name)
+{
 }
