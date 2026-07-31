@@ -6,6 +6,7 @@
 #include "Utilities/Hash.h"
 #include "Utilities/Size.h"
 #include "Utilities/Math.h"
+#include "Memory/GPU/RangeAllocatorInterface.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -20,49 +21,14 @@ struct AkMaterialStorage
 };
 
 static constexpr uint32_t kAllocationPageSize = 16;
+static constexpr size_t kMaterialBufferSize = SizeMB(4);
+
 static std::unique_ptr<AkStructuredBuffer> sMaterialsBuffer;
-
-static int32_t sAllocationTail = 0;
-static std::unordered_map<uint32_t, uint8_t> sAllocations = {};
-static std::map<uint8_t, std::queue<int32_t>> sFreeAllocations = {};
-
-uint32_t AllocateMaterial(uint8_t pagesToAllocate)
-{
-	const uint32_t allocationSize = pagesToAllocate * kAllocationPageSize;
-
-	if (!sFreeAllocations.empty())
-	{
-		for (auto [pages, offsets] : sFreeAllocations)
-		{
-			if (!offsets.empty() && pages >= pagesToAllocate)
-			{
-				uint32_t offset = offsets.front();
-				offsets.pop();
-
-				sAllocations[offset] = pagesToAllocate;
-
-				if (pages != pagesToAllocate)
-				{
-					uint8_t pagesLeft = pages - pagesToAllocate;
-					uint32_t newOffset = offset + allocationSize;
-					sFreeAllocations[pagesLeft].push(newOffset);
-				}
-
-				return offset;
-			}
-		}
-	}
-	
-	const uint32_t allocationOffset = sAllocationTail;
-	sAllocationTail += allocationSize;
-	sAllocations[allocationOffset] = pagesToAllocate;
-	return allocationOffset;
-}
+static AkRangeAllocatorInterface sMaterialAllocator(kMaterialBufferSize);
 
 void AkMaterial::InitializeGlobalBuffer()
 {
-	size_t initialSize = SizeMB(4);
-	sMaterialsBuffer = std::make_unique<AkStructuredBuffer>(initialSize, nullptr, AkBufferFlags_CPU_ACCESS);
+	sMaterialsBuffer = std::make_unique<AkStructuredBuffer>(kMaterialBufferSize, nullptr, AkBufferFlags_CPU_ACCESS);
 }
 
 void AkMaterial::DeinitializeGlobalBuffer()
@@ -100,8 +66,7 @@ AkMaterial::AkMaterial(class AkShader* shader, const std::optional<AkRasterizerS
 	if (reflection.materialDataSize)
 	{
 		uint32_t roundedSize = RoundToNextMultiple(reflection.materialDataSize, kAllocationPageSize);
-		uint8_t neededPages = static_cast<uint8_t>(roundedSize / kAllocationPageSize);
-		m_BindlessOffset = AllocateMaterial(neededPages);
+		m_BindlessOffset = static_cast<int32_t>(sMaterialAllocator.Allocate(roundedSize));
 	}
 
 	m_Hash = Hash(m_RasterizerState);
@@ -118,17 +83,17 @@ AkMaterial::~AkMaterial()
 
 	if (m_BindlessOffset != -1)
 	{
-		uint8_t pages = sAllocations[m_BindlessOffset];
-		sFreeAllocations[pages].push(m_BindlessOffset);
-		sAllocations.erase(m_BindlessOffset);
+		sMaterialAllocator.Deallocate(m_BindlessOffset);
 	}
 }
 
 void AkMaterial::SetData(uint8_t* data, size_t size)
 {
 	if (m_BindlessOffset != -1)
+	{
 		if (uint8_t* bufferPointer = sMaterialsBuffer->GetMappedDataPointer())
 			memcpy(bufferPointer + m_BindlessOffset, data, size);
+	}
 }
 
 void AkMaterial::SetConstantBuffer(AkConstantBuffer* buffer, const uint32_t binding, const uint32_t set)

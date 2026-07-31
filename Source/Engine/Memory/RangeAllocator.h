@@ -1,5 +1,5 @@
 #pragma once
-#include "Utilities/Math.h"
+#include "Core/Log.h"
 
 #include <cstdint>
 
@@ -75,9 +75,6 @@ public:
 			FreeBlock* newBlock = reinterpret_cast<FreeBlock*>(reinterpret_cast<uint8_t*>(currentBestFit) + totalAllocationSize);
 			newBlock->size = currentBestFit->size - totalAllocationSize;
 			newBlock->next = currentBestFit->next;
-		
-			currentBestFit->size = totalAllocationSize;
-			currentBestFit->next = newBlock;
 
 			if (previousBestFit)
 				previousBestFit->next = newBlock;
