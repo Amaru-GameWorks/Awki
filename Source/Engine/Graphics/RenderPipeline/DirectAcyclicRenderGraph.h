@@ -8,9 +8,8 @@ class AkDirectAcyclicRenderGraph
 {
 public:
 	void Compile(const std::multimap<uint8_t, class AkRenderPipeline*>& groupedRenderPipelines);
-	const std::vector<class AkRenderPass*>& GetSortedRenderPasses() const { return m_SortedRenderPasses; }
-	bool GetManagedResource(AkPipelineResourceId id, AkBuffer*& managedBuffer, AkTexture*& managedTexture);
-
+	void Execute(std::vector<AkCommandBuffer*>& commandBuffers);
+	
 	void SetBackBufferRenderTarget(class AkRenderTarget* backBuffer) { m_BackBuffer = backBuffer; }
 	class AkRenderTarget* GetBackBufferRenderTarget() const { return m_BackBuffer; }
 
@@ -24,4 +23,6 @@ private:
 
 	std::unordered_map<AkPipelineResourceId, class AkBuffer*> m_ManagedBuffers;
 	std::unordered_map<AkPipelineResourceId, class AkTexture*> m_ManagedTextures;
+
+	bool GetManagedResource(AkPipelineResourceId id, AkBuffer*& managedBuffer, AkTexture*& managedTexture);
 };

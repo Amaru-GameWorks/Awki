@@ -68,14 +68,14 @@ void AkScheduler::ProcessRenderThread()
 	{
 		bool dagNeedsRecompilation = false;
 		std::vector<AkCommandBuffer*> commandBuffersToSubmit = {};
+		std::multimap<uint8_t, AkRenderPipeline*> groupedRenderPipelines = {};
+		AkComponentsView<AkCamera> cameraView = AkRegistry::GetView<AkCamera>();
+		
 		if (AkUploadManager::HasPendingUploads())
 		{
 			AkUploadManager::FillCommandBuffer();
 			commandBuffersToSubmit.push_back(AkUploadManager::GetCommandBuffer());
 		}
-
-		std::multimap<uint8_t, AkRenderPipeline*> groupedRenderPipelines = {};
-		AkComponentsView<AkCamera> cameraView = AkRegistry::GetView<AkCamera>();
 
 		if (cameraView.Count())
 		{
@@ -137,61 +137,11 @@ void AkScheduler::ProcessRenderThread()
 				sRenderGraph.Compile(groupedRenderPipelines);
 			}
 
-			sRenderGraph.SetBackBufferRenderTarget(m_Swapchain->GetCurrentBackBufferRenderTarget());
-
 			for (auto& [renderOrder, renderPipeline] : groupedRenderPipelines)
 				renderPipeline->SetFrameData();
 
-			const std::vector<AkRenderPass*> sortedRenderPasses = sRenderGraph.GetSortedRenderPasses();
-			commandBuffersToSubmit.reserve(commandBuffersToSubmit.size() + sortedRenderPasses.size());
-
-			std::unordered_map<AkPipelineResourceId, AkResourceState> usedStates = {};
-
-			for (AkRenderPass* renderPass : sortedRenderPasses)
-			{
-				AkCommandBuffer*& commandBuffer = commandBuffersToSubmit.emplace_back(renderPass->GetCommandBuffer());
-				commandBuffer->Begin();
-
-				const std::vector<AkResourceUsage>& resourceUsage = renderPass->GetResourcesUsage();
-				if (!resourceUsage.empty())
-				{
-					std::vector<AkResourceTransition> bufferTransitions = {};
-					std::vector<AkResourceTransition> textureTransitions = {};
-
-					for(const AkResourceUsage& resource : resourceUsage)
-					{
-						AkBuffer* managedBuffer = nullptr;
-						AkTexture* managedTexture = nullptr;
-
-						if (sRenderGraph.GetManagedResource(resource.id, managedBuffer, managedTexture))
-						{
-							AkResourceTransition& transition = textureTransitions.emplace_back();
-							if (!usedStates.contains(resource.id))
-							{
-								transition.sourceState = AkResourceState::UNDEFINED;
-								transition.destinationState = resource.state;
-								usedStates[resource.id] = resource.state;
-							}
-							else
-							{
-								transition.sourceState = usedStates[resource.id];
-								transition.destinationState = resource.state;
-								usedStates[resource.id] = resource.state;
-							}
-
-							if (managedBuffer)
-								transition.resource = managedBuffer;
-							else
-								transition.resource = managedTexture;
-						}
-					}
-				
-					commandBuffer->TransitionResources(bufferTransitions, textureTransitions);
-				}
-
-				renderPass->Execute(sRenderGraph);
-				commandBuffer->End();
-			}
+			sRenderGraph.SetBackBufferRenderTarget(m_Swapchain->GetCurrentBackBufferRenderTarget());
+			sRenderGraph.Execute(commandBuffersToSubmit);
 		}
 
 		m_Swapchain->Present(commandBuffersToSubmit);

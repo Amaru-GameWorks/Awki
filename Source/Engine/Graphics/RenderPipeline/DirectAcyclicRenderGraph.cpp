@@ -315,6 +315,59 @@ void AkDirectAcyclicRenderGraph::Compile(const std::multimap<uint8_t, AkRenderPi
 	}
 }
 
+void AkDirectAcyclicRenderGraph::Execute(std::vector<AkCommandBuffer*>& commandBuffers)
+{
+	commandBuffers.reserve(commandBuffers.size() + m_SortedRenderPasses.size());
+
+	std::unordered_map<AkPipelineResourceId, AkResourceState> usedStates = {};
+
+	for (AkRenderPass* renderPass : m_SortedRenderPasses)
+	{
+		AkCommandBuffer*& commandBuffer = commandBuffers.emplace_back(renderPass->GetCommandBuffer());
+		commandBuffer->Begin();
+
+		const std::vector<AkResourceUsage>& resourceUsage = renderPass->GetResourcesUsage();
+		if (!resourceUsage.empty())
+		{
+			std::vector<AkResourceTransition> bufferTransitions = {};
+			std::vector<AkResourceTransition> textureTransitions = {};
+
+			for (const AkResourceUsage& resource : resourceUsage)
+			{
+				AkBuffer* managedBuffer = nullptr;
+				AkTexture* managedTexture = nullptr;
+
+				if (GetManagedResource(resource.id, managedBuffer, managedTexture))
+				{
+					AkResourceTransition& transition = textureTransitions.emplace_back();
+					if (!usedStates.contains(resource.id))
+					{
+						transition.sourceState = AkResourceState::UNDEFINED;
+						transition.destinationState = resource.state;
+						usedStates[resource.id] = resource.state;
+					}
+					else
+					{
+						transition.sourceState = usedStates[resource.id];
+						transition.destinationState = resource.state;
+						usedStates[resource.id] = resource.state;
+					}
+
+					if (managedBuffer)
+						transition.resource = managedBuffer;
+					else
+						transition.resource = managedTexture;
+				}
+			}
+
+			commandBuffer->TransitionResources(bufferTransitions, textureTransitions);
+		}
+
+		renderPass->Execute(*this);
+		commandBuffer->End();
+	}
+}
+
 bool AkDirectAcyclicRenderGraph::GetManagedResource(AkPipelineResourceId id, AkBuffer*& managedBuffer, AkTexture*& managedTexture)
 {
 	if (m_ManagedBuffers.contains(id))

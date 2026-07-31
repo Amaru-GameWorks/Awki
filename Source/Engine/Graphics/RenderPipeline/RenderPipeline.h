@@ -21,9 +21,9 @@ public:
 
 	template<typename T, typename ...Args>
 	requires (std::derived_from<T, AkRenderPass>)
-	void AddRenderPass(Args&&... Arguments)
+	void AddRenderPass(Args&&... arguments)
 	{
-		m_RenderPasses.push_back(std::make_unique<T>(this, Arguments...));
+		m_RenderPasses.push_back(std::make_unique<T>(this, arguments...));
 	}
 
 	virtual void Setup();
