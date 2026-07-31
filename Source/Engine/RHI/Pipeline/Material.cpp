@@ -10,8 +10,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include <map>
-#include <queue>
 #include <memory>
 
 struct AkMaterialStorage
