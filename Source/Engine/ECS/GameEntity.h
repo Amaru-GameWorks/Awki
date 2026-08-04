@@ -9,22 +9,19 @@ public:
 		: m_Entity(entity)
 	{ }
 
-	template <typename T>
-	requires(AkIsComponent<T>::value)
+	template <AkComponent T>
 	T* AddComponent()
 	{
 		return AkRegistry::AddComponent<T>(m_Entity);
 	}
 
-	template <typename T>
-	requires(AkIsComponent<T>::value)
+	template <AkComponent T>
 	T* GetComponent()
 	{
 		return AkRegistry::GetComponent<T>(m_Entity);
 	}
 
-	template <typename T>
-	requires(AkIsComponent<T>::value)
+	template <AkComponent T>
 	void RemoveComponent()
 	{
 		AkRegistry::RemoveComponent<T>();
