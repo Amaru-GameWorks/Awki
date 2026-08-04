@@ -2,11 +2,10 @@
 #include <cstdint>
 //https://mightyprofessionalgaming.com/tutorials/memory-allocators-from-scratch.html#pool
 
-template <typename T, size_t Count>
+template<typename T, size_t Count>
+requires(sizeof(T) >= sizeof(void*))
 class AkPoolAllocator
 {
-	static_assert(sizeof(T) >= sizeof(void*), "Type size must be big enough to hold a pointer");
-
 public:
 	AkPoolAllocator()
 	{
@@ -19,11 +18,11 @@ public:
 	{
 		if (m_Head < 0)
 			return nullptr;
-		
+
 		uint8_t* slot = SlotHeader(m_Head);
 		size_t nextHead = *reinterpret_cast<size_t*>(slot);
 		m_Head = nextHead;
-		
+
 		return reinterpret_cast<T*>(slot);
 	}
 
@@ -33,7 +32,7 @@ public:
 		return newAllocation ? new (newAllocation) T() : nullptr;
 	}
 
-	void Deallocate(T* allocation) 
+	void Deallocate(T* allocation)
 	{
 		size_t index = (reinterpret_cast<uint8_t*>(allocation) - m_Storage) / sizeof(T);
 		*reinterpret_cast<size_t*>(SlotHeader(index)) = m_Head;

@@ -33,7 +33,7 @@ public:
 
 		FreeBlock* previousFreeBlock = nullptr;
 		FreeBlock* currentFreeBlock = m_FreeBlock;
-		
+
 		FreeBlock* previousBestFit = nullptr;
 		FreeBlock* currentBestFit = nullptr;
 
@@ -51,19 +51,19 @@ public:
 				if (currentFreeBlock->size == totalAllocationSize)
 					break;
 			}
-		
+
 			previousFreeBlock = currentFreeBlock;
 			currentFreeBlock = currentFreeBlock->next;
 		}
-		
+
 		if (!currentBestFit)
 			return nullptr;
-		
+
 		if (currentBestFit->size - totalAllocationSize <= sizeof(size_t))
 		{
 			//Take the whole block since we can't allocate anything else in this one
 			totalAllocationSize = currentBestFit->size;
-		
+
 			if (previousBestFit)
 				previousBestFit->next = currentBestFit->next;
 			else
@@ -89,6 +89,7 @@ public:
 	}
 
 	template<typename T>
+	requires(sizeof(T) >= sizeof(void*))
 	T* Allocate()
 	{
 		static_assert(sizeof(T) >= sizeof(void*), "Type size must be big enough to hold a pointer");
@@ -151,7 +152,7 @@ public:
 			workingBlock = previusFreeBlock;
 			workingBlock->size += blockSize;
 		}
-		
+
 		if (nextFreeBlock)
 		{
 			if (blockStart + blockSize == nextFreeBlockAddress)
