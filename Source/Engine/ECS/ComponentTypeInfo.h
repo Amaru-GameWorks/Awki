@@ -1,40 +1,65 @@
 #pragma once
-#include "ComponentPool.h"
 #include "Utilities/Hash.h"
 
-#include <memory>
-#include <functional>
-#include <unordered_map>
+#include <type_traits>
 
-class AkComponentPoolInitializers
+template <typename T>
+struct AkComponentTypeInfo
 {
-public:
-	static const std::unordered_map<size_t, std::function<std::unique_ptr<AkComponentPoolBase>()>>& Get()
-	{
-		return sPoolInitializers;
-	}
-
-	static void Set(size_t typeId, const std::function<std::unique_ptr<AkComponentPoolBase>()>& initializer)
-	{
-		sPoolInitializers[typeId] = initializer;
-	}
-
-private:
-	static inline std::unordered_map<size_t, std::function<std::unique_ptr<AkComponentPoolBase>()>> sPoolInitializers;
+	using kRequires = std::tuple<>;
+	static constexpr bool kIsRegistered = false;
 };
 
-template<typename T>
-struct AkComponentTypeInfo
-{ };
+struct AkComponentCounter
+{
+	template <typename T>
+	friend struct AkComponentTypeInfo;
 
-template<typename T>
-struct AkIsComponent : std::false_type {};
+private:
+	static inline size_t sCount = 0;
+};
 
-#define REGISTER_COMPONENT(component)	class component; template<> struct AkComponentTypeInfo<component>																			\
-										{																																			\
-											AkComponentTypeInfo() { AkComponentPoolInitializers::Set(TypeId(), []() { return std::make_unique<AkComponentPool<component>>(); }); }	\
-											static constexpr const char* Name() { return #component; }																				\
-											static constexpr size_t TypeId() { return FNV1aHash(#component); }																		\
-										};																																			\
-										static inline AkComponentTypeInfo<component> s##component##StaticInitializer;																\
-										template<> struct AkIsComponent<component> : std::true_type { };
+template <typename T>
+concept AkComponent = AkComponentTypeInfo<T>::kIsRegistered;
+
+#define REGISTER_COMPONENT(component, ...)	class component; template<> struct AkComponentTypeInfo<component>																			\
+											{																																			\
+												using kRequires = std::tuple<__VA_ARGS__>;																								\
+												static constexpr bool kIsRegistered = true;																								\
+												static constexpr std::string_view Name() { return #component; }																			\
+												static constexpr size_t TypeId() { return FNV1aHash(#component); }																		\
+												static size_t GetBitIndex() { static size_t sIndex = AkComponentCounter::sCount++; return sIndex; }										\
+											};
+
+namespace AkTypeTraits
+{
+	template <typename T, typename Tuple>
+	struct AkContains;
+
+	template <typename T, typename... Types>
+	struct AkContains<T, std::tuple<Types...>> : std::disjunction<std::is_same<T, Types>...> { };
+
+	template <typename TargetTuple, typename RemainingTuple>
+	struct AkDependencySolver;
+
+	template <typename TargetTuple>
+	struct AkDependencySolver<TargetTuple, std::tuple<>>
+	{ using type = TargetTuple; };
+
+	template <typename TargetTuple, typename Head, typename... Tail>
+	struct AkDependencySolver<TargetTuple, std::tuple<Head, Tail...>>
+	{
+		using HeadDeps = typename AkComponentTypeInfo<Head>::kRequires;
+		using TargetWithHeadDeps = typename AkDependencySolver<TargetTuple, HeadDeps>::type;
+		using NextTarget = std::conditional_t<
+			AkContains<Head, TargetWithHeadDeps>::value,
+			TargetWithHeadDeps,
+			decltype(std::tuple_cat(std::declval<TargetWithHeadDeps>(), std::declval<std::tuple<Head>>()))
+		>;
+
+		using type = typename AkDependencySolver<NextTarget, std::tuple<Tail...>>::type;
+	};
+}
+
+template <typename T>
+using AkComponentWithDependencies = typename AkTypeTraits::AkDependencySolver<std::tuple<>, std::tuple<T>>::type;

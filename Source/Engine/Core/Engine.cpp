@@ -50,7 +50,6 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 	if (!AkDevice::Initialize())
 		throw std::runtime_error("Failed to initialize RHI Device!");
 
-	AkRegistry::Initialize();
 	AkPipelineStateManager::Initialize();
 	AkBindlessResourcesManager::Initialize();
 

@@ -21,7 +21,9 @@ struct AkViewport
 	float maxDepth;
 };
 
-REGISTER_COMPONENT(AkCamera);
+class AkTransform;
+
+REGISTER_COMPONENT(AkCamera, AkTransform);
 class AkCamera
 {
 public:

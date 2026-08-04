@@ -1,21 +1,21 @@
 #pragma once
-#include "Core/Log.h"
 #include "ComponentPool.h"
+#include "ComponentTypeInfo.h"
 
 #include <vector>
 #include <algorithm>
 #include <functional>
 
-template<typename... Types>
+template<AkComponent... Types>
 class AkComponentsView
 {
 public:
-	AkComponentsView(std::initializer_list<AkComponentPoolBase*> pools)
+	AkComponentsView(std::initializer_list<std::shared_ptr<AkComponentPoolBase>> pools)
 		: m_Pools(pools)
 	{
 		if constexpr (sizeof...(Types) > 1)
 		{
-			auto minIterator = std::ranges::min_element(m_Pools, {}, [](AkComponentPoolBase* pool) { return pool->Count(); });
+			auto minIterator = std::ranges::min_element(m_Pools, {}, [](std::shared_ptr<AkComponentPoolBase> pool) { return pool->Count(); });
 			m_SmallesIndex = std::distance(m_Pools.begin(), minIterator);
 		}
 	}
@@ -41,7 +41,7 @@ public:
 		{
 			for (AkEntity entity : m_Pools[m_SmallesIndex]->GetEntities())
 			{
-				function(entity, static_cast<AkComponentPool<Types>*>(m_Pools[m_SmallesIndex])->Get(entity)...);
+				function(entity, std::static_pointer_cast<AkComponentPool<Types>>(m_Pools[m_SmallesIndex])->Get(entity)...);
 			}
 		}
 	}
@@ -55,50 +55,50 @@ public:
 		}
 		else
 		{
-			for (auto component : static_cast<AkComponentPool<Types...>*>(m_Pools[m_SmallesIndex])->GetComponents())
+			for (auto component : std::static_pointer_cast<AkComponentPool<Types...>>(m_Pools[m_SmallesIndex])->GetComponents())
 				function(component);
 		}
 	}
 
 private:
 	size_t m_SmallesIndex = 0;
-	std::vector<AkComponentPoolBase*> m_Pools;
+	std::vector<std::shared_ptr<AkComponentPoolBase>> m_Pools;
 
 	template<size_t... Is>
 	void ForEach(const std::function<void(Types&...)>& function, std::index_sequence<Is...>)
 	{
-		std::vector<AkComponentPoolBase*> m_PoolsToCheckEntityValidity;
-		m_PoolsToCheckEntityValidity.reserve(m_Pools.size() - 1);
+		std::vector< std::shared_ptr<AkComponentPoolBase>> poolsToCheckEntityValidity;
+		poolsToCheckEntityValidity.reserve(m_Pools.size() - 1);
 
 		for (size_t i = 0; i < m_Pools.size(); ++i)
 		{
 			if(i != m_SmallesIndex)
-				m_PoolsToCheckEntityValidity.push_back(m_Pools[i]);
+				poolsToCheckEntityValidity.push_back(m_Pools[i]);
 		}
 
 		for (AkEntity entity : m_Pools[m_SmallesIndex]->GetEntities())
 		{
-			if (std::ranges::all_of(m_PoolsToCheckEntityValidity, [entity](AkComponentPoolBase* pool) { return pool->Contains(entity); }))
-				function(static_cast<AkComponentPool<Types>*>(m_Pools[Is])->Get(entity)...);
+			if (std::ranges::all_of(poolsToCheckEntityValidity, [entity](std::shared_ptr<AkComponentPoolBase> pool) { return pool->Contains(entity); }))
+				function(std::static_pointer_cast<AkComponentPool<Types>>(m_Pools[Is])->Get(entity)...);
 		}
 	}
 
 	template<size_t... Is>
 	void ForEach(const std::function<void(AkEntity, Types&...)>& function, std::index_sequence<Is...>)
 	{
-		std::vector<AkComponentPoolBase*> m_PoolsToCheckEntityValidity;
-		m_PoolsToCheckEntityValidity.reserve(m_Pools.size() - 1);
+		std::vector< std::shared_ptr<AkComponentPoolBase>> poolsToCheckEntityValidity;
+		poolsToCheckEntityValidity.reserve(m_Pools.size() - 1);
 
 		for (size_t i = 0; i < m_Pools.size(); ++i)
 		{
 			if (i != m_SmallesIndex)
-				m_PoolsToCheckEntityValidity.push_back(m_Pools[i]);
+				poolsToCheckEntityValidity.push_back(m_Pools[i]);
 		}
 
 		for (AkEntity entity : m_Pools[m_SmallesIndex]->GetEntities())
 		{
-			if (std::ranges::all_of(m_PoolsToCheckEntityValidity, [entity](AkComponentPoolBase* pool) { return pool->Contains(entity); }))
-				function(entity, static_cast<AkComponentPool<Types>*>(m_Pools[Is])->Get(entity)...);
+			if (std::ranges::all_of(poolsToCheckEntityValidity, [entity](std::shared_ptr<AkComponentPoolBase> pool) { return pool->Contains(entity); }))
+				function(entity, std::static_pointer_cast<AkComponentPool<Types>>(m_Pools[Is])->Get(entity)...);
 		}
 	}
 };

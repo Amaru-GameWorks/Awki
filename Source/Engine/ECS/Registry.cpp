@@ -1,13 +1,5 @@
 #include "Registry.h"
 
-void AkRegistry::Initialize()
-{
-	for (auto const& [typeId, initializer] : AkComponentPoolInitializers::Get())
-	{
-		m_ComponentPools[typeId] = initializer();
-	}
-}
-
 AkEntity AkRegistry::CreateEntity()
 {
 	uint32_t index = 0;
