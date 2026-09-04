@@ -7,33 +7,42 @@ template<typename T, size_t PageSize>
 class AkPagedVector
 {
 public:
+	AkPagedVector()
+	{
+		m_Allocator = AkPageAllocator(sizeof(T), PageSize, alignof(T));
+	}
+
 	void PushBack(const T& element)
 	{
-		const size_t index = m_Size++;
-		m_Allocator.Resize(m_Size);
+		ResizeInternal();
 
-		m_Allocator[index] = element;
+		++m_Size;
+		*(m_WriteHead++) = element;
 	}
 
 	void PushBack(T&& element)
 	{
-		const size_t index = m_Size++;
-		m_Allocator.Resize(m_Size);
+		ResizeInternal();
 
-		new (&m_Allocator[index]) T(std::move(element));
+		++m_Size;
+		std::construct_at(m_WriteHead++, std::move(element));
 	}
 
 	T& EmplaceBack()
 	{
-		const size_t index = m_Size++;
-		m_Allocator.Resize(m_Size);
-		return m_Allocator[index];
+		ResizeInternal();
+		++m_Size;
+
+		return *(m_WriteHead++);
 	}
 
 	void Resize(size_t newSize)
 	{
 		m_Size = newSize;
-		m_Allocator.Resize(m_Size);
+		m_Allocator.Resize(m_Size * sizeof(T));
+
+		m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages().back());
+		m_WriteHead += (m_Size % PageSize);
 	}
 
 	size_t Size() const
@@ -43,22 +52,25 @@ public:
 
 	size_t Capacity() const
 	{
-		return m_Allocator.Count();
+		return m_Allocator.Size();
 	}
 
 	template<typename Function>
 	void ForEach(Function&& function)
 	{
-		std::vector<std::array<T, PageSize>>& pages = m_Allocator.GetPages();
-		
+		std::vector<uint8_t*>& pages = m_Allocator.GetPages();
+
 		size_t remaining = m_Size;
-		for (std::array<T, PageSize>& page : pages)
+		for (uint8_t* page : pages)
 		{
+			if (remaining == 0)
+				break;
+
+			T* typedPage = reinterpret_cast<T*>(page);
 			const size_t countInPage = std::min(remaining, PageSize);
-			for (size_t i = 0; i < PageSize; ++i)
-			{
-				function(page[i]);
-			}
+
+			for (size_t i = 0; i < countInPage; ++i)
+				function(typedPage[i]);
 
 			remaining -= countInPage;
 		}
@@ -66,5 +78,15 @@ public:
 
 private:
 	size_t m_Size = 0;
-	AkPageAllocator<T, PageSize> m_Allocator;
+	T* m_WriteHead = nullptr;
+	AkPageAllocator m_Allocator;
+
+	void ResizeInternal()
+	{
+		if (m_Size % PageSize == 0)
+		{
+			m_Allocator.AllocateNewPage();
+			m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages().back());
+		}
+	}
 };

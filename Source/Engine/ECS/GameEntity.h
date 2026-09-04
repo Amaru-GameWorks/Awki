@@ -24,7 +24,7 @@ public:
 	template <AkComponent T>
 	void RemoveComponent()
 	{
-		AkRegistry::RemoveComponent<T>();
+		AkRegistry::RemoveComponent<T>(m_Entity);
 	}
 
 private:

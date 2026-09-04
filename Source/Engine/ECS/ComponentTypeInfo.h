@@ -1,6 +1,7 @@
 #pragma once
 #include "Utilities/Hash.h"
 
+#include <bitset>
 #include <type_traits>
 
 template <typename T>
@@ -22,13 +23,23 @@ private:
 template <typename T>
 concept AkComponent = AkComponentTypeInfo<T>::kIsRegistered;
 
-#define REGISTER_COMPONENT(component, ...)	class component; template<> struct AkComponentTypeInfo<component>																			\
-											{																																			\
-												using kRequires = std::tuple<__VA_ARGS__>;																								\
-												static constexpr bool kIsRegistered = true;																								\
-												static constexpr std::string_view Name() { return #component; }																			\
-												static constexpr size_t TypeId() { return FNV1aHash(#component); }																		\
-												static size_t GetBitIndex() { static size_t sIndex = AkComponentCounter::sCount++; return sIndex; }										\
+constexpr size_t kMaxComponents = 64;
+using AkArchetypeHash = std::bitset<kMaxComponents>;
+
+#define REGISTER_COMPONENT(component, ...)	class component; template<> struct AkComponentTypeInfo<component>																								\
+											{																																								\
+												using kRequires = std::tuple<__VA_ARGS__>;																													\
+												static constexpr bool kIsRegistered = true;																													\
+												static constexpr std::string_view Name() { return #component; }																								\
+												static constexpr size_t TypeId() { return FNV1aHash(#component); }																							\
+												static size_t BitIndex() { static size_t sIndex = AkComponentCounter::sCount++; return sIndex; }															\
+												static AkArchetypeHash ArchetypeHash()	{ static AkArchetypeHash sHash = []()->AkArchetypeHash																\
+																														{																					\
+																															std::string bits(kMaxComponents, '0');											\
+																															bits.at(kMaxComponents - 1 - AkComponentTypeInfo<component>::BitIndex()) = '1';	\
+																															return AkArchetypeHash(bits);													\
+																														}(); return sHash;																	\
+																						}																													\
 											};
 
 namespace AkTypeTraits
