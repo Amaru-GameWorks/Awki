@@ -9,6 +9,8 @@ public:
 		: m_Entity(entity)
 	{ }
 
+	operator AkEntity() const { return m_Entity; }
+
 	template <AkComponent T>
 	T* AddComponent()
 	{
@@ -25,6 +27,18 @@ public:
 	void RemoveComponent()
 	{
 		AkRegistry::RemoveComponent<T>(m_Entity);
+	}
+
+	template <AkEntityTag T>
+	void AddTag()
+	{
+		AkRegistry::AddTag<T>(m_Entity);
+	}
+
+	template <AkEntityTag T>
+	void RemoveTag()
+	{
+		AkRegistry::RemoveTag<T>(m_Entity);
 	}
 
 private:

@@ -4,20 +4,16 @@
 
 #include <vector>
 #include <memory>
+#include <algorithm>
 #include <unordered_set>
 
 template<AkComponent... Types>
 class AkComponentsView
 {
 public:
-	AkComponentsView(const std::vector<std::shared_ptr<AkArchetype>>& archetypes)
-	{
-		for (auto& archetype : archetypes)
-		{
-			if (archetype)
-				m_Archetypes.push_back(archetype);
-		}
-	}
+	AkComponentsView(const std::vector<AkArchetype*>& archetypes)
+		: m_Archetypes(archetypes)
+	{ }
 
 	const std::vector<AkEntity>& GetEntities()
 	{
@@ -64,14 +60,44 @@ public:
 		ForEach(function, indexSequence);
 	}
 
+	template <AkEntityTag ...Tags>
+	AkComponentsView<Types...> WithTags()
+	{
+		AkComponentTypeHash tagsHash = {};
+		(tagsHash.set(GetBitIndex<Tags>(), true), ...);
+
+		std::vector<AkArchetype*> compatibleArchetypes = {};
+		compatibleArchetypes.reserve(m_Archetypes.size());
+
+		for (auto& archetype : m_Archetypes)
+		{
+			const AkComponentTypeHash testHash = archetype->GetHash() & tagsHash;
+			if (testHash == tagsHash)
+			{
+				compatibleArchetypes.push_back(archetype);
+			}
+		}
+
+		return AkComponentsView<Types...>(compatibleArchetypes);
+	}
+
+	template<typename SortFunction>
+	AkComponentsView<Types...>& Sort(SortFunction&& function)
+	{
+		std::sort(m_Archetypes.begin(), m_Archetypes.end(), function);
+		return *this;
+	}
+
+	AkComponentsView<Types...>& HierarchySort();
+
 private:
 	std::vector<AkEntity> m_Entities = {};
-	std::vector<std::shared_ptr<AkArchetype>> m_Archetypes;
+	std::vector<AkArchetype*> m_Archetypes;
 
 	template<typename Function, size_t... Is>
 	void ForEach(Function&& function, std::index_sequence<Is...>)
 	{
-		for (std::shared_ptr<AkArchetype>& archetype : m_Archetypes)
+		for (AkArchetype* archetype : m_Archetypes)
 		{
 			std::vector<AkPageAllocator*> componentAllocators = archetype->GetComponentAllocators<Types...>();
 			std::vector<std::vector<uint8_t*>> pages = { componentAllocators[Is]->GetPages()... };

@@ -11,10 +11,19 @@ struct AkComponentTypeInfo
 	static constexpr bool kIsRegistered = false;
 };
 
+template<typename T>
+struct AkEntityTagInfo
+{
+	static constexpr bool kIsRegistered = false;
+};
+
 struct AkComponentCounter
 {
 	template <typename T>
 	friend struct AkComponentTypeInfo;
+
+	template <typename T>
+	friend struct AkEntityTagInfo;
 
 private:
 	static inline size_t sCount = 0;
@@ -23,8 +32,29 @@ private:
 template <typename T>
 concept AkComponent = AkComponentTypeInfo<T>::kIsRegistered;
 
+template <typename T>
+concept AkEntityTag = AkEntityTagInfo<T>::kIsRegistered;
+
 constexpr size_t kMaxComponents = 64;
-using AkArchetypeHash = std::bitset<kMaxComponents>;
+using AkComponentTypeHash = std::bitset<kMaxComponents>;
+
+template<typename T>
+size_t GetBitIndex()
+{
+	if constexpr (AkComponentTypeInfo<T>::kIsRegistered)
+		return AkComponentTypeInfo<T>::BitIndex();
+	else if constexpr (AkEntityTagInfo<T>::kIsRegistered)
+		return AkEntityTagInfo<T>::BitIndex();
+}
+
+template<typename T>
+AkComponentTypeHash GetArchetypeHash()
+{
+	if constexpr (AkComponentTypeInfo<T>::kIsRegistered)
+		return AkComponentTypeInfo<T>::ArchetypeHash();
+	else if constexpr (AkEntityTagInfo<T>::kIsRegistered)
+		return AkEntityTagInfo<T>::ArchetypeHash();
+}
 
 #define REGISTER_COMPONENT(component, ...)	class component; template<> struct AkComponentTypeInfo<component>																								\
 											{																																								\
@@ -33,14 +63,27 @@ using AkArchetypeHash = std::bitset<kMaxComponents>;
 												static constexpr std::string_view Name() { return #component; }																								\
 												static constexpr size_t TypeId() { return FNV1aHash(#component); }																							\
 												static size_t BitIndex() { static size_t sIndex = AkComponentCounter::sCount++; return sIndex; }															\
-												static AkArchetypeHash ArchetypeHash()	{ static AkArchetypeHash sHash = []()->AkArchetypeHash																\
-																														{																					\
+												static AkComponentTypeHash ArchetypeHash()	{ static AkComponentTypeHash sHash = []()->AkComponentTypeHash													\
+																														 {																					\
 																															std::string bits(kMaxComponents, '0');											\
 																															bits.at(kMaxComponents - 1 - AkComponentTypeInfo<component>::BitIndex()) = '1';	\
-																															return AkArchetypeHash(bits);													\
-																														}(); return sHash;																	\
+																															return AkComponentTypeHash(bits);												\
+																														 }(); return sHash;																	\
 																						}																													\
 											};
+
+#define REGISTER_ENTITY_TAG(tag)	class tag; template<> struct AkEntityTagInfo<tag>																														\
+									{																																										\
+										static constexpr bool kIsRegistered = true;																															\
+										static size_t BitIndex() { static size_t sIndex = AkComponentCounter::sCount++; return sIndex; }																	\
+										static AkComponentTypeHash ArchetypeHash()	{ static AkComponentTypeHash sHash = []()->AkComponentTypeHash															\
+																														 {																					\
+																															std::string bits(kMaxComponents, '0');											\
+																															bits.at(kMaxComponents - 1 - AkEntityTagInfo<tag>::BitIndex()) = '1';			\
+																															return AkComponentTypeHash(bits);												\
+																														 }(); return sHash;																	\
+																					}																														\
+									};
 
 namespace AkTypeTraits
 {

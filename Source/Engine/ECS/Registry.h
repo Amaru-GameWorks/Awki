@@ -1,23 +1,14 @@
 #pragma once
 #include "Entity.h"
+#include "Archetype.h"
 #include "Core/Assert.h"
+#include "ComponentsView.h"
 #include "ComponentTypeInfo.h"
 
 #include <queue>
-#include <bitset>
 #include <vector>
 #include <memory>
 #include <unordered_map>
-
-#define AK_USE_ARCHETYPES 1
-
-#if AK_USE_ARCHETYPES
-#include "Archetype.h"
-#include "ComponentsArchetypeView.h"
-#else
-#include "ComponentPool.h"
-#include "ComponentsPoolView.h"
-#endif
 
 class AkRegistry
 {
@@ -34,7 +25,7 @@ public:
 		{
 			index = static_cast<uint32_t>(m_Generations.size());
 			m_Generations.push_back(0);
-			m_EntityToArchetype.push_back(nullptr);
+			m_EntityRecords.push_back(nullptr);
 		}
 
 		return AkEntity{ .id = index, .generation = m_Generations[index] };
@@ -54,13 +45,9 @@ public:
 		if (!IsEntityValid(entity))
 			return;
 
-#if AK_USE_ARCHETYPES
-		m_EntityToArchetype[entity.id]->Remove(entity);
-		m_EntityToArchetype[entity.id] = nullptr;
-#else
-		for (auto& [typeId, pool] : m_ComponentPools)
-			pool->Remove(entity);
-#endif
+		AkArchetype*& archetype = m_EntityRecords[entity.id];
+		archetype->Remove(entity);
+		archetype = nullptr;
 
 		++m_Generations[entity.id];
 		m_FreeIndices.push(entity.id);
@@ -69,57 +56,47 @@ public:
 	template <AkComponent T>
 	static T* AddComponent(AkEntity entity)
 	{
-		AkAssert(m_Generations[entity.id] == entity.generation, "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
+		AkAssert(IsEntityValid(entity), "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
 
 		if (!IsEntityValid(entity))
 			return nullptr;
 
-#if AK_USE_ARCHETYPES
-		AkArchetypeHash archetypeHash = {};
-		std::apply([entity, &archetypeHash](auto... type)
-#else
-		std::apply([entity](auto... type)
-#endif
+		AkComponentTypeHash componentTypeHash = {};
+		std::apply([entity, &componentTypeHash](auto... type)
 		{
-#if AK_USE_ARCHETYPES
-			(archetypeHash.set(AkComponentTypeInfo<decltype(type)>::BitIndex(), true), ...);
-#else
-			(AddComponentInternal<decltype(type)>(entity), ...);
-#endif
+			(componentTypeHash.set(GetBitIndex<decltype(type)>(), true), ...);
 		}, AkComponentWithDependencies<T>{});
 
-#if AK_USE_ARCHETYPES
+		AkArchetype*& oldArchetype = m_EntityRecords[entity.id];
+		AkArchetypeHash archetypeHash = { oldArchetype ? oldArchetype->GetParentId() : kNullEntityId, componentTypeHash };
+		
 		if (!m_Archetypes.contains(archetypeHash))
 		{
-			std::shared_ptr<AkArchetype> archetype = std::make_shared<AkArchetype>(archetypeHash);
+			std::unique_ptr<AkArchetype> archetype = std::make_unique<AkArchetype>(archetypeHash);
 			archetype->Initialize(AkComponentWithDependencies<T>{});
-			m_Archetypes[archetypeHash] = archetype;
+			m_Archetypes[archetypeHash] = std::move(archetype);
 		}
 
-		std::shared_ptr<AkArchetype>& newArchetype = m_Archetypes[archetypeHash];
-		std::shared_ptr<AkArchetype>& oldArchetype = m_EntityToArchetype[entity.id];
+		std::unique_ptr<AkArchetype>& newArchetype = m_Archetypes[archetypeHash];
 
 		if (oldArchetype)
 			newArchetype->Migrate(entity, *oldArchetype);
 		else
 			newArchetype->Add(entity);
 
-		oldArchetype = newArchetype;
-#endif
-
+		oldArchetype = newArchetype.get();
 		return GetComponent<T>(entity);
 	}
 
 	template <AkComponent T>
 	static T* GetComponent(AkEntity entity)
 	{
-		AkAssert(m_Generations[entity.id] == entity.generation, "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
+		AkAssert(IsEntityValid(entity), "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
 
 		if (!IsEntityValid(entity))
 			return nullptr;
 
-#if AK_USE_ARCHETYPES
-		if (std::shared_ptr<AkArchetype>& entityArchetype = m_EntityToArchetype[entity.id])
+		if (AkArchetype* entityArchetype = m_EntityRecords[entity.id])
 		{
 			return &entityArchetype->GetComponent<T>(entity);
 		}
@@ -127,31 +104,22 @@ public:
 		{
 			return nullptr;
 		}
-#else
-		std::shared_ptr<AkComponentPool<T>> pool = GetOrCreatePool<T>();
-		if (!pool->Contains(entity))
-			return nullptr;
-	
-		return &pool->Get(entity);
-#endif
-
 	}
 
 	template <AkComponent T>
 	static void RemoveComponent(AkEntity entity)
 	{
-		AkAssert(m_Generations[entity.id] == entity.generation, "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
-		
+		AkAssert(IsEntityValid(entity), "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
+
 		if (!IsEntityValid(entity))
 			return;
 
-#if AK_USE_ARCHETYPES
-		if (std::shared_ptr<AkArchetype>& entityArchetype = m_EntityToArchetype[entity.id])
+		if (AkArchetype*& entityArchetype = m_EntityRecords[entity.id].archetype)
 		{
 			AkArchetypeHash newHash = entityArchetype->GetHash();
-			newHash.set(AkComponentTypeInfo<T>::BitIndex(), false);
+			newHash.typeHash.set(GetBitIndex<T>(), false);
 
-			if (newHash != 0)
+			if (newHash.typeHash != 0)
 			{
 				std::shared_ptr<AkArchetype> oldArchetype = entityArchetype;
 
@@ -177,69 +145,174 @@ public:
 			else
 			{
 				entityArchetype->Remove(entity);
+				entityArchetype = nullptr;
 			}
 		}
-#else
-		std::shared_ptr<AkComponentPool<T>> pool = GetOrCreatePool<T>();
-		pool->Remove(entity);
-#endif
+	}
+
+	template<AkEntityTag T>
+	static void AddTag(AkEntity entity)
+	{
+		AkAssert(IsEntityValid(entity), "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
+
+		if (!IsEntityValid(entity))
+			return;
+
+		AkArchetype*& oldArchetype = m_EntityRecords[entity.id];
+		std::unordered_map<size_t, AkComponentDescriptor> componentDescriptors = {};
+		
+		AkArchetypeHash archetypeHash = {};
+		archetypeHash.typeHash = GetArchetypeHash<T>();
+
+		if (oldArchetype)
+		{
+			archetypeHash.parentId = oldArchetype->GetParentId();
+			archetypeHash.typeHash |= oldArchetype->GetTypeHash();
+			componentDescriptors = oldArchetype->GetComponentDescriptors();
+		}
+
+		if (!m_Archetypes.contains(archetypeHash))
+		{
+			std::unique_ptr<AkArchetype> archetype = std::make_unique<AkArchetype>(archetypeHash);
+			archetype->Initialize(componentDescriptors);
+			m_Archetypes[archetypeHash] = std::move(archetype);
+		}
+
+		std::unique_ptr<AkArchetype>& newArchetype = m_Archetypes[archetypeHash];
+
+		if (oldArchetype)
+			newArchetype->Migrate(entity, *oldArchetype);
+		else
+			newArchetype->Add(entity);
+
+		oldArchetype = newArchetype.get();
+	}
+
+	template<AkEntityTag T>
+	static void RemoveTag(AkEntity entity)
+	{
+		AkAssert(IsEntityValid(entity), "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
+
+		if (!IsEntityValid(entity))
+			return;
+
+		if (AkArchetype*& entityArchetype = m_EntityRecords[entity.id])
+		{
+			AkArchetypeHash newHash = entityArchetype->GetHash();
+			newHash.typeHash.set(GetBitIndex<T>(), false);
+
+			if (newHash.typeHash != 0)
+			{
+				std::shared_ptr<AkArchetype> oldArchetype = entityArchetype;
+
+				auto newArchetype = m_Archetypes.find(newHash);
+				if (newArchetype != m_Archetypes.end())
+				{
+					entityArchetype = newArchetype->second;
+				}
+				else
+				{
+					std::unordered_map<size_t, AkComponentDescriptor> descriptors = oldArchetype->GetComponentDescriptors();
+					std::shared_ptr<AkArchetype> newArchetype = std::make_shared<AkArchetype>(newHash);
+					newArchetype->Initialize(descriptors);
+					m_Archetypes[newHash] = newArchetype;
+
+					entityArchetype = newArchetype;
+				}
+
+				entityArchetype->Migrate(entity, *oldArchetype);
+			}
+			else
+			{
+				entityArchetype->Remove(entity);
+				entityArchetype = nullptr;
+			}
+		}
+	}
+
+	static void SetParent(AkEntity entity, AkEntity parent)
+	{
+		AkAssert(IsEntityValid(entity), "Trying to use stale entity [id: {} - generation: {}]", entity.id, entity.generation);
+		AkAssert(parent == kNullEntity || IsEntityValid(parent), "Trying to use stale parent entity [id: {} - generation: {}]", parent.id, parent.generation);
+
+		if (!IsEntityValid(entity) || (parent != kNullEntity && !IsEntityValid(parent)) || entity == parent)
+			return;
+
+		AkArchetypeHash archetypeHash = {};
+		std::unordered_map<size_t, AkComponentDescriptor> componentDescriptors = {};
+
+		AkArchetype*& oldArchetype = m_EntityRecords[entity.id];
+		if (oldArchetype)
+		{
+			if (oldArchetype->GetParentId() == kNullEntityId && parent == kNullEntity)
+				return;
+
+			archetypeHash = oldArchetype->GetHash();
+				
+			if (parent == kNullEntity)
+				archetypeHash.parentId = kNullEntityId;
+			else
+				archetypeHash.parentId = parent.id;
+
+			componentDescriptors = oldArchetype->GetComponentDescriptors();
+		}
+
+		if (!m_Archetypes.contains(archetypeHash))
+		{
+			std::unique_ptr<AkArchetype> archetype = std::make_unique<AkArchetype>(archetypeHash);
+			archetype->Initialize(componentDescriptors);
+			m_Archetypes[archetypeHash] = std::move(archetype);
+		}
+
+		std::unique_ptr<AkArchetype>& newArchetype = m_Archetypes[archetypeHash];
+
+		if (oldArchetype)
+			newArchetype->Migrate(entity, *oldArchetype);
+		else
+			newArchetype->Add(entity);
+
+		oldArchetype = newArchetype.get();
 	}
 
 	template <AkComponent ...T>
 	static AkComponentsView<T...> GetView()
 	{
-#if AK_USE_ARCHETYPES
-		AkArchetypeHash viewHash = {};
-		(viewHash.set(AkComponentTypeInfo<T>::BitIndex(), true), ...);
+		AkComponentTypeHash viewHash = {};
+		(viewHash.set(GetBitIndex<T>(), true), ...);
 
-		std::vector<std::shared_ptr<AkArchetype>> compatibleArchetypes = {};
+		std::vector<AkArchetype*> compatibleArchetypes = {};
 		compatibleArchetypes.reserve(sizeof...(T));
 
 		for (auto& [hash, archetype] : m_Archetypes)
 		{
-			const AkArchetypeHash testHash = hash & viewHash;
+			const AkComponentTypeHash testHash = hash.typeHash & viewHash;
 			if (testHash == viewHash)
 			{
-				compatibleArchetypes.push_back(archetype);
+				compatibleArchetypes.push_back(archetype.get());
 			}
 		}
 
 		return AkComponentsView<T...>(compatibleArchetypes);
-#else
-		return AkComponentsView<T...>({ GetOrCreatePool<T>()... });
-#endif
+	}
+
+	static size_t GetArchetypeHierarchyDepth(AkArchetype& archetype)
+	{
+		size_t depth = 0;
+		uint32_t currentParent = archetype.GetParentId();
+
+		while (currentParent != kNullEntityId)
+		{
+			++depth;
+			currentParent = m_EntityRecords[currentParent]->GetParentId();
+		}
+
+		return depth;
 	}
 
 private:
 	static inline std::queue<uint32_t> m_FreeIndices;
 	static inline std::vector<uint32_t> m_Generations;
 
-#if AK_USE_ARCHETYPES
-	static inline std::unordered_map<AkArchetypeHash, std::shared_ptr<AkArchetype>> m_Archetypes;
-	static inline std::vector<std::shared_ptr<AkArchetype>> m_EntityToArchetype;
-#else
-	static inline std::unordered_map<size_t, std::shared_ptr<AkComponentPoolBase>> m_ComponentPools;
-
-	template <AkComponent T>
-	static void AddComponentInternal(AkEntity entity)
-	{
-		std::shared_ptr<AkComponentPool<T>> pool = GetOrCreatePool<T>();
-		if (!pool->Contains(entity))
-			pool->Add(entity);
-	}
-
-	template <AkComponent T>
-	static std::shared_ptr<AkComponentPool<T>> GetOrCreatePool()
-	{
-		constexpr size_t typeId = AkComponentTypeInfo<T>::TypeId();
-
-		auto it = m_ComponentPools.find(typeId);
-		if (it != m_ComponentPools.end() && it->second)
-			return std::static_pointer_cast<AkComponentPool<T>>(it->second);
-
-		std::shared_ptr<AkComponentPool<T>> newPool = std::make_shared<AkComponentPool<T>>();
-		m_ComponentPools[typeId] = newPool;
-		return newPool;
-	}
-#endif
+	static inline std::vector<AkArchetype*> m_EntityRecords;
+	static inline std::unordered_map<AkArchetypeHash, std::unique_ptr<AkArchetype>> m_Archetypes;
 };

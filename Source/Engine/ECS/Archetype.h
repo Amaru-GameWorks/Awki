@@ -8,10 +8,36 @@
 
 struct AkComponentDescriptor
 {
-	size_t size;
-	size_t alignment;
-	std::function<void(uint8_t* componentAddress)> initializeComponent;
+	size_t size = 0;
+	size_t alignment = 1;
+	std::function<void(uint8_t* componentAddress)> initializeComponent = nullptr;
 };
+
+struct AkArchetypeHash
+{
+	uint32_t parentId = kNullEntityId;
+	AkComponentTypeHash typeHash = {};
+
+	friend bool operator== (const AkArchetypeHash& rhs, const AkArchetypeHash& lhs)
+	{
+		return rhs.parentId == lhs.parentId && rhs.typeHash == lhs.typeHash;
+	}
+};
+
+namespace std
+{
+	template <>
+	struct hash<AkArchetypeHash>
+	{
+		size_t operator()(AkArchetypeHash archetype) const noexcept
+		{
+			size_t hash = Hash(archetype.parentId);
+			HashCombine(hash, archetype.typeHash);
+			return hash;
+		}
+	};
+}
+
 
 class AkArchetype
 {
@@ -50,8 +76,8 @@ public:
 
 		m_Sparse[entity.id] = static_cast<uint32_t>(m_Dense.size());
 		m_Dense.push_back(entity);
-		EnsureComponentsSize();
 
+		EnsureComponentsSize();
 		InitializeComponents(entity);
 	}
 
@@ -131,6 +157,16 @@ public:
 		return m_Hash;
 	}
 
+	const uint32_t& GetParentId() const
+	{
+		return m_Hash.parentId;
+	}
+
+	const AkComponentTypeHash& GetTypeHash() const
+	{
+		return m_Hash.typeHash;
+	}
+
 	const std::vector<AkEntity>& GetEntities()
 	{
 		return m_Dense;
@@ -184,7 +220,9 @@ private:
 	void EnsureComponentsSize()
 	{
 		const size_t componentsCount = m_Dense.size();
-		if (!m_ComponentAllocators.begin()->second.SpaceAvailable(componentsCount))
+		auto iterator = m_ComponentAllocators.begin();
+
+		if (iterator != m_ComponentAllocators.end() && !iterator->second.SpaceAvailable(componentsCount))
 		{
 			for (auto& [id, allocator] : m_ComponentAllocators)
 				allocator.AllocateNewPage();

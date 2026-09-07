@@ -13,6 +13,8 @@ struct AkEntity
 	auto operator<=>(const AkEntity&) const = default;
 };
 
+static constexpr AkEntity kNullEntity = {};
+
 namespace std 
 {
 	template <>
