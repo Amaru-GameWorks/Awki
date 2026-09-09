@@ -30,13 +30,11 @@ public:
 
 	void Resize(size_t newSize)
 	{
-		const size_t newPageCount = static_cast<size_t>(std::ceil(static_cast<float>(newSize) / static_cast<float>(m_PageSize)));
+		const size_t newPageCount = (m_PageSize > 0) ? (newSize + m_PageSize - 1) / m_PageSize : 0;
 		if (newPageCount > m_Pages.size())
 		{
-			const size_t missingPages = newPageCount - m_Pages.size();
-			m_Pages.reserve(m_Pages.size() + newPageCount);
-		
-			for (size_t i = 0; i < missingPages; ++i)
+			m_Pages.reserve(newPageCount);
+			while (m_Pages.size() < newPageCount)
 			{
 				uint8_t* page = static_cast<uint8_t*>(::operator new[](m_PageSize, std::align_val_t(m_Alignment)));
 				m_Pages.push_back(page);
@@ -60,6 +58,11 @@ public:
 		return m_Pages.size();
 	}
 
+	size_t ElementCount() const
+	{
+		return Size() / m_ElementSize;
+	}
+
 	std::vector<uint8_t*>& GetPages()
 	{
 		return m_Pages;
@@ -67,6 +70,11 @@ public:
 
 	uint8_t* Get(size_t index)
 	{
+		AkAssert(index < ElementCount(), "Element out of range");
+
+		if (index >= ElementCount())
+			return nullptr;
+
 		const size_t pageIndex = index / m_ElementsPerPage;
 		const size_t pageElement = index % m_ElementsPerPage;
 		return &m_Pages[pageIndex][pageElement * m_ElementSize];

@@ -1,7 +1,7 @@
 #pragma once
 #include "Entity.h"
-#include "Memory/PageAllocator.h"
 #include "ECS/ComponentTypeInfo.h"
+#include "Memory/ExponentialPageAllocator.h"
 
 #include <vector>
 #include <unordered_map>
@@ -137,7 +137,7 @@ public:
 		{
 			if (sourceArchetype.m_ComponentAllocators.contains(typeId))
 			{
-				AkPageAllocator& sourceAllocator = sourceArchetype.m_ComponentAllocators[typeId];
+				AkExponentialPageAllocator& sourceAllocator = sourceArchetype.m_ComponentAllocators[typeId];
 				uint8_t* destination = allocator.Get(destinationIndex);
 				uint8_t* source = sourceAllocator.Get(sourceIndex);
 				std::memcpy(destination, source, m_Descriptors[typeId].size);
@@ -178,9 +178,9 @@ public:
 	}
 
 	template<typename ...T>
-	std::vector<AkPageAllocator*> GetComponentAllocators()
+	std::vector<AkExponentialPageAllocator*> GetComponentAllocators()
 	{
-		std::vector<AkPageAllocator*> allocators = {};
+		std::vector<AkExponentialPageAllocator*> allocators = {};
 		allocators.reserve(sizeof...(T));
 
 		([&]{
@@ -196,13 +196,13 @@ private:
 	AkArchetypeHash m_Hash;
 	std::vector<AkEntity> m_Dense;
 	std::vector<uint32_t> m_Sparse;
-	std::unordered_map<size_t, AkPageAllocator> m_ComponentAllocators;
 	std::unordered_map<size_t, AkComponentDescriptor> m_Descriptors;
+	std::unordered_map<size_t, AkExponentialPageAllocator> m_ComponentAllocators;
 
 	void InitializeInternal()
 	{
 		for (auto& [typeId, descriptor] : m_Descriptors)
-			m_ComponentAllocators[typeId] = AkPageAllocator(descriptor.size, kMaxComponentPerPage, descriptor.alignment);
+			m_ComponentAllocators[typeId] = AkExponentialPageAllocator(descriptor.size, 8ull, kMaxComponentPerPage, descriptor.alignment);
 	}
 
 	template<typename T>

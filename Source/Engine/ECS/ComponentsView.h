@@ -99,32 +99,34 @@ private:
 	{
 		for (AkArchetype* archetype : m_Archetypes)
 		{
-			std::vector<AkPageAllocator*> componentAllocators = archetype->GetComponentAllocators<Types...>();
-			std::vector<std::vector<uint8_t*>> pages = { componentAllocators[Is]->GetPages()... };
-			const size_t pageCount = componentAllocators[0]->PageCount();
+			const std::vector<AkEntity>& entities = archetype->GetEntities();
+			std::vector<AkExponentialPageAllocator*> componentAllocators = archetype->GetComponentAllocators<Types...>();
 			
+			AkExponentialPageAllocator* firstAllocator = componentAllocators[0];
+			const size_t pageCount = firstAllocator->PageCount();
+			
+			size_t entityOffset = 0;
 			size_t remaining = archetype->Count();
+
+			std::vector<std::vector<AkPageAllocation>> pages = { componentAllocators[Is]->GetPages()... };
 			for (size_t page = 0; page < pageCount; ++page)
 			{
 				if (remaining == 0)
 					break;
 
-				const size_t countInPage = std::min(remaining, AkArchetype::kMaxComponentPerPage);
+				const size_t countInPage = std::min(remaining, firstAllocator->GetPageElementCount(page));
 
 				if constexpr (std::is_invocable_v<Function, AkEntity, Types&...>)
 				{
-					const std::vector<AkEntity>& entities = archetype->GetEntities();
-					const size_t entitiesOffset = page * AkArchetype::kMaxComponentPerPage;
 
 					for (size_t i = 0; i < countInPage; ++i)
-						function(entities[entitiesOffset + i], reinterpret_cast<Types*>(pages[Is][page])[i]...);
+						function(entities[entityOffset++], reinterpret_cast<Types*>(pages[Is][page].data)[i]...);
 				}
 				else
 				{
 					for (size_t i = 0; i < countInPage; ++i)
-						function(reinterpret_cast<Types*>(pages[Is][page])[i]...);
+						function(reinterpret_cast<Types*>(pages[Is][page].data)[i]...);
 				}
-				
 
 				remaining -= countInPage;
 			}

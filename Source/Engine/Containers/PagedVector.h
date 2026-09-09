@@ -15,16 +15,16 @@ public:
 	void PushBack(const T& element)
 	{
 		ResizeInternal();
-
 		++m_Size;
+
 		*(m_WriteHead++) = element;
 	}
 
 	void PushBack(T&& element)
 	{
 		ResizeInternal();
-
 		++m_Size;
+
 		std::construct_at(m_WriteHead++, std::move(element));
 	}
 
@@ -33,16 +33,58 @@ public:
 		ResizeInternal();
 		++m_Size;
 
-		return *(m_WriteHead++);
+		T* newElement = m_WriteHead++;
+		new (newElement) T();
+
+		return *newElement;
+	}
+
+	T& Get(size_t index)
+	{
+		return m_Allocator.Get<T>(index);
+	}
+
+	void Reserve(size_t newCapacity)
+	{
+		if (newCapacity <= m_Capacity)
+			return;
+
+		m_Allocator.Resize(newCapacity * sizeof(T));
+		m_Capacity = m_Allocator.ElementCount();
 	}
 
 	void Resize(size_t newSize)
 	{
-		m_Size = newSize;
-		m_Allocator.Resize(m_Size * sizeof(T));
+		if (m_Size == newSize)
+			return;
 
-		m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages().back());
-		m_WriteHead += (m_Size % PageSize);
+		if (m_Size > newSize)
+		{
+			for (size_t i = m_Size; i > newSize; --i)
+				m_Allocator.Get<T>(i - 1).~T();
+
+			m_Allocator.Resize(newSize * sizeof(T));
+		}
+		else
+		{
+			m_Allocator.Resize(newSize * sizeof(T));
+
+			for (size_t i = m_Size; i < newSize; ++i)
+				new (&m_Allocator.Get<T>(i)) T();
+		}
+
+		m_Size = newSize;
+		m_Capacity = m_Allocator.ElementCount();
+
+		if (m_Size != 0)
+		{
+			m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages().back());
+			m_WriteHead += (m_Size % PageSize);
+		}
+		else
+		{
+			m_WriteHead = nullptr;
+		}
 	}
 
 	size_t Size() const
@@ -78,14 +120,18 @@ public:
 
 private:
 	size_t m_Size = 0;
+	size_t m_Capacity = 0;
 	T* m_WriteHead = nullptr;
 	AkPageAllocator m_Allocator;
 
 	void ResizeInternal()
 	{
-		if (m_Size % PageSize == 0)
+		const size_t availableSpace = m_Capacity - m_Size;
+		if (availableSpace == 0)
 		{
 			m_Allocator.AllocateNewPage();
+			m_Capacity = m_Allocator.ElementCount();
+
 			m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages().back());
 		}
 	}
