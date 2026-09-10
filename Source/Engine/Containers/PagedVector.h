@@ -14,7 +14,7 @@ public:
 
 	void PushBack(const T& element)
 	{
-		ResizeInternal();
+		ResizeAndCheckWriteHead();
 		++m_Size;
 
 		*(m_WriteHead++) = element;
@@ -22,7 +22,7 @@ public:
 
 	void PushBack(T&& element)
 	{
-		ResizeInternal();
+		ResizeAndCheckWriteHead();
 		++m_Size;
 
 		std::construct_at(m_WriteHead++, std::move(element));
@@ -30,7 +30,7 @@ public:
 
 	T& EmplaceBack()
 	{
-		ResizeInternal();
+		ResizeAndCheckWriteHead();
 		++m_Size;
 
 		T* newElement = m_WriteHead++;
@@ -50,6 +50,10 @@ public:
 			return;
 
 		m_Allocator.Resize(newCapacity * sizeof(T));
+		
+		if(m_Capacity == 0)
+			m_WriteHead = reinterpret_cast<T*>(*m_Allocator.GetPages().begin());
+
 		m_Capacity = m_Allocator.ElementCount();
 	}
 
@@ -124,15 +128,20 @@ private:
 	T* m_WriteHead = nullptr;
 	AkPageAllocator m_Allocator;
 
-	void ResizeInternal()
+	void ResizeAndCheckWriteHead()
 	{
-		const size_t availableSpace = m_Capacity - m_Size;
-		if (availableSpace == 0)
+		if (m_Capacity - m_Size == 0)
 		{
 			m_Allocator.AllocateNewPage();
 			m_Capacity = m_Allocator.ElementCount();
-
 			m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages().back());
+			return;
+		}
+
+		if (m_Size % PageSize == 0)
+		{
+			const size_t pageIndex = m_Size / PageSize;
+			m_WriteHead = reinterpret_cast<T*>(m_Allocator.GetPages()[pageIndex]);
 		}
 	}
 };
