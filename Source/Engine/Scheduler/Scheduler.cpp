@@ -48,8 +48,7 @@ void AkScheduler::ProcessGameThread()
 {
 	AkEvents::PollEvents();
 
-	auto HierarchySort = [](AkArchetype* archetypeA, AkArchetype* archetypeB) { return AkRegistry::GetArchetypeHierarchyDepth(*archetypeA) < AkRegistry::GetArchetypeHierarchyDepth(*archetypeB); };
-	AkRegistry::GetView<AkTransform>().Sort(HierarchySort).ForEach([](AkTransform& transform)
+	AkRegistry::GetView<AkTransform>().HierarchySort().ForEach([](AkTransform& transform)
 	{
 		transform.Update();
 	});

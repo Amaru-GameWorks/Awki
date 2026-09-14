@@ -1,6 +1,7 @@
 #pragma once
 #include "Archetype.h"
 #include "ComponentTypeInfo.h"
+#include "ComponentsViewSorting.h"
 
 #include <vector>
 #include <memory>
@@ -22,7 +23,7 @@ public:
 			static std::vector<AkEntity> sDummy;
 			return sDummy;
 		}
-		
+
 		if constexpr (sizeof...(Types) > 1)
 		{
 			if (m_Entities.empty())
@@ -60,6 +61,22 @@ public:
 		ForEach(function, indexSequence);
 	}
 
+	AkComponentsView<Types...> WithParent(AkEntity parent)
+	{
+		std::vector<AkArchetype*> compatibleArchetypes = {};
+		compatibleArchetypes.reserve(m_Archetypes.size());
+
+		for (auto& archetype : m_Archetypes)
+		{
+			if (archetype->GetParentId() == parent.id)
+			{
+				compatibleArchetypes.push_back(archetype);
+			}
+		}
+
+		return AkComponentsView<Types...>(compatibleArchetypes);
+	}
+
 	template <AkEntityTag ...Tags>
 	AkComponentsView<Types...> WithTags()
 	{
@@ -88,7 +105,11 @@ public:
 		return *this;
 	}
 
-	AkComponentsView<Types...>& HierarchySort();
+	AkComponentsView<Types...>& HierarchySort()
+	{
+		std::sort(m_Archetypes.begin(), m_Archetypes.end(), AkComponentsHierarchySorting::Sort);
+		return *this;
+	}
 
 private:
 	std::vector<AkEntity> m_Entities = {};
@@ -101,10 +122,10 @@ private:
 		{
 			const std::vector<AkEntity>& entities = archetype->GetEntities();
 			std::vector<AkExponentialPageAllocator*> componentAllocators = archetype->GetComponentAllocators<Types...>();
-			
+
 			AkExponentialPageAllocator* firstAllocator = componentAllocators[0];
 			const size_t pageCount = firstAllocator->PageCount();
-			
+
 			size_t entityOffset = 0;
 			size_t remaining = archetype->Count();
 
@@ -132,4 +153,6 @@ private:
 			}
 		}
 	}
+
+	static bool HierarchySortFunction(AkArchetype* lhs, AkArchetype* rhs);
 };
