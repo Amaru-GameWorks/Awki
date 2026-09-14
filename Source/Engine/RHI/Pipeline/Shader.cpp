@@ -10,46 +10,65 @@ struct AkShaderStorage
 {
 	vk::ShaderModule shaderModule;
 	vk::PipelineLayout pipelineLayout;
-	vk::DescriptorSetLayout descriptorLayout;
+	std::vector<vk::DescriptorSetLayout> descriptorLayouts;
 };
 
-AkShader::AkShader(const AkShaderByteCode& byteCode)
+AkShader::AkShader(const AkShaderData& shaderData)
+	: m_Reflection(shaderData.GetReflection())
 {
 	const vk::Device& device = AkDevice::GetDevice();
 
 	vk::ShaderModuleCreateInfo moduleCreateInfo =
 	{
-		.codeSize = byteCode.GetSize(),
-		.pCode = reinterpret_cast<const uint32_t*>(byteCode.GetByteCode()),
+		.codeSize = shaderData.GetByteCodeSize(),
+		.pCode = reinterpret_cast<const uint32_t*>(shaderData.GetByteCode()),
 	};
 	m_Storage->shaderModule = device.createShaderModule(moduleCreateInfo);
 
-	const vk::DescriptorSetLayoutBinding descriptorLayoutBinding =
+	for (const auto& [set, descriptor] : m_Reflection.descriptorSets)
 	{
-		.descriptorType = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eAll
-	};
-	const vk::DescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo =
-	{
-		.bindingCount = 1,
-		.pBindings = &descriptorLayoutBinding
-	};
-	m_Storage->descriptorLayout = device.createDescriptorSetLayout(descriptorLayoutCreateInfo);
+		for (const auto& [binding, constantBuffer] : descriptor.constantBuffers)
+		{
+			const vk::DescriptorSetLayoutBinding descriptorLayoutBinding =
+			{
+				.binding = binding,
+				.descriptorType = vk::DescriptorType::eUniformBuffer,
+				.descriptorCount = 1,
+				.stageFlags = vk::ShaderStageFlagBits::eAll
+			};
 
-	const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts =
+			const vk::DescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo =
+			{
+				.bindingCount = 1,
+				.pBindings = &descriptorLayoutBinding
+			};
+
+			m_Storage->descriptorLayouts.push_back(device.createDescriptorSetLayout(descriptorLayoutCreateInfo));
+		}
+	}
+
+	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = { AkBindlessResourcesManager::GetDescriptorSetLayout() };
+	descriptorSetLayouts.insert(descriptorSetLayouts.end(), m_Storage->descriptorLayouts.begin(), m_Storage->descriptorLayouts.end());
+
+	const vk::PushConstantRange pushConstantsRange =
 	{
-		AkBindlessResourcesManager::GetBuffersDescriptorSetLayout(),
-		AkBindlessResourcesManager::GetTexturesDescriptorSetLayout(),
-		AkBindlessResourcesManager::GetSamplersDescriptorSetLayout(),
-		m_Storage->descriptorLayout
+		.stageFlags = vk::ShaderStageFlagBits::eAll,
+		.offset = 0,
+		.size = m_Reflection.pushConstantSize
 	};
 
-	const vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo =
+	vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo =
 	{
 		.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size()),
 		.pSetLayouts = descriptorSetLayouts.data()
 	};
+
+	if (m_Reflection.pushConstantSize > 0)
+	{
+		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantsRange;
+	}
+
 	m_Storage->pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
 }
 
@@ -58,7 +77,9 @@ AkShader::~AkShader()
 	const vk::Device& device = AkDevice::GetDevice();
 	device.destroyShaderModule(m_Storage->shaderModule); 
 	device.destroyPipelineLayout(m_Storage->pipelineLayout);
-	device.destroyDescriptorSetLayout(m_Storage->descriptorLayout);
+
+	for(auto& descriptorLayout : m_Storage->descriptorLayouts)
+		device.destroyDescriptorSetLayout(descriptorLayout);
 }
 
 const vk::ShaderModule& AkShader::GetModule() const
@@ -71,7 +92,7 @@ const vk::PipelineLayout& AkShader::GetPipelineLayout() const
 	return m_Storage->pipelineLayout;
 }
 
-const vk::DescriptorSetLayout& AkShader::GetDescriptorSetLayout() const
+const std::vector<vk::DescriptorSetLayout>& AkShader::GetDescriptorSetLayouts() const
 {
-	return m_Storage->descriptorLayout;
+	return m_Storage->descriptorLayouts;
 }

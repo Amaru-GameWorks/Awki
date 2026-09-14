@@ -51,3 +51,9 @@
 
 # Log files
 *.log
+
+# Resources Folder
+Resources/*
+
+# Whitelist Shaders
+!Resources/Shaders

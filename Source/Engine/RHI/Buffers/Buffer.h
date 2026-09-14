@@ -1,7 +1,9 @@
 #pragma once
 #include "RHI/Device.h"
+#include "Utilities/Hash.h"
 #include "Utilities/Math.h"
 #include "Utilities/ForwardStorage.h"
+#include "RHI/Pipeline/RasterizerState.h"
 
 #include <type_traits>
 
@@ -35,11 +37,27 @@ struct AkBufferDescriptor
 	AkBufferFlags flags = 0;
 };
 
+namespace std
+{
+	template <>
+	struct hash<AkBufferDescriptor>
+	{
+		size_t operator()(const AkBufferDescriptor& bufferDescriptor) const
+		{
+			size_t hash = 0;
+			HashCombine(hash, bufferDescriptor.size);
+			HashCombine(hash, bufferDescriptor.flags);
+			return hash;
+		}
+	};
+}
+
 class AkBuffer
 {
 	friend class AkBindlessResourcesManager;
 
 public:
+	AkBuffer(const AkBufferDescriptor& descriptor, const vk::Buffer& buffer);
 	AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data = nullptr);
 	~AkBuffer();
 
@@ -50,18 +68,29 @@ public:
 	vk::DeviceAddress GetDeviceAddress() const;
 	const vk::Buffer& GetBuffer() const;
 
+	void SetDebugName(const std::string& name);
+
 private:
 
+	bool m_FromNative = false;
 	int32_t m_BindlessIndex = -1;
 	AkBufferDescriptor m_Descriptor = {};
 	uint8_t* m_MappedDataPointer = nullptr;
-	ForwardStorage<struct AkBufferStorage, 24> m_Storage;
+	AkForwardStorage<struct AkBufferStorage, 24> m_Storage;
+};
+
+class AkStagingBuffer : public AkBuffer
+{
+public:
+	AkStagingBuffer(const size_t size)
+		: AkBuffer({ size, AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_SOURCE }, nullptr)
+	{ }
 };
 
 class AkConstantBuffer : public AkBuffer
 {
 public:
-	AkConstantBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
+	AkConstantBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinConstantBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_CONSTANT | AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
@@ -74,8 +103,8 @@ public:
 class AkStructuredBuffer : public AkBuffer
 {
 public:
-	AkStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
-		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	AkStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
@@ -87,12 +116,50 @@ public:
 class AkRWStructuredBuffer : public AkBuffer
 {
 public:
-	AkRWStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlagBits extraFlags = {})
-		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_ALLOW_UNORDERED_ACCESS | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	AkRWStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_ALLOW_UNORDERED_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
 	AkRWStructuredBuffer(T& data, AkBufferFlagBits extraFlags = {})
 		: AkRWStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
 	{ }
+};
+
+class AkVertexBuffer : public AkBuffer
+{
+public:
+	AkVertexBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_VERTEX | AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	{ }
+};
+
+class AkIndexBufferBase : public AkBuffer
+{
+public:
+	AkIndexBufferBase(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_INDEX | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	{ }
+
+	virtual AkIndexType GetType() const = 0;
+	virtual uint32_t GetElementSize() const = 0;
+};
+
+template<AkIndexType IndexType>
+class AkIndexBuffer : public AkIndexBufferBase
+{
+	using Element = std::conditional_t<IndexType == AkIndexType::U16, uint16_t, uint32_t>;
+
+public:
+	using AkIndexBufferBase::AkIndexBufferBase;
+	
+	AkIndexType GetType() const override
+	{
+		return IndexType;
+	}
+
+	uint32_t GetElementSize() const override
+	{
+		return sizeof(Element);
+	}
 };

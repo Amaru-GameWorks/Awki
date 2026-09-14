@@ -123,3 +123,9 @@ const std::optional<struct vk::RenderingAttachmentInfo>& AkRenderTarget::GetDept
 {
 	return m_Storage->depthAttachment;
 }
+
+glm::uvec2 AkRenderTarget::GetSize() const
+{
+	const AkTextureDescriptor& descriptor = GetValidTextureDescriptor();
+	return { descriptor.width, descriptor.height };
+}

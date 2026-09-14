@@ -10,7 +10,7 @@
 #include <Windows.h>
 #endif
 
-void WriteToLogFile(std::string_view logMessage)
+void WriteToLogFile(const std::string_view logMessage)
 {
 	static std::ofstream sLogFile("Awki.log", std::ios::out);
 	sLogFile.exceptions(std::ofstream::badbit | std::ofstream::failbit);

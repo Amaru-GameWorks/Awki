@@ -86,7 +86,7 @@ enum class AkPixelFormat : uint8_t
 	D16_UNORM
 };
 
-inline constexpr bool IsSRGB(const AkPixelFormat format)
+constexpr bool IsSRGB(const AkPixelFormat format)
 {
 	switch (format)
 	{
@@ -104,7 +104,7 @@ inline constexpr bool IsSRGB(const AkPixelFormat format)
 	}
 }
 
-inline constexpr bool SupportsSRGB(const AkPixelFormat format)
+constexpr bool SupportsSRGB(const AkPixelFormat format)
 {
 	switch (format)
 	{
@@ -122,7 +122,7 @@ inline constexpr bool SupportsSRGB(const AkPixelFormat format)
 	}
 }
 
-inline constexpr AkPixelFormat GetSRGB(const AkPixelFormat format)
+constexpr AkPixelFormat GetSRGB(const AkPixelFormat format)
 {
 	if (!IsSRGB(format) && SupportsSRGB(format))
 	{
@@ -134,28 +134,28 @@ inline constexpr AkPixelFormat GetSRGB(const AkPixelFormat format)
 		return format;
 }
 
-inline constexpr bool IsDepthPixelFormat(const AkPixelFormat format)
+constexpr bool IsDepthPixelFormat(const AkPixelFormat format)
 {
 	return format >= AkPixelFormat::D32_SFLOAT_S8_UINT;
 }
 
-inline constexpr bool PixelFormatHasStencil(const AkPixelFormat format)
+constexpr bool PixelFormatHasStencil(const AkPixelFormat format)
 {
 	return format == AkPixelFormat::D32_SFLOAT_S8_UINT
 		|| format == AkPixelFormat::D24_UNORM_S8_UINT;
 }
 
-inline constexpr bool IsHDRPixelFormat(const AkPixelFormat format)
+constexpr bool IsHDRPixelFormat(const AkPixelFormat format)
 {
 	return format >= AkPixelFormat::R10G10B10A2_UNORM && format <= AkPixelFormat::RGBA32_FLOAT;
 }
 
-inline constexpr bool IsBlockCompressedPixelFormat(const AkPixelFormat format)
+constexpr bool IsBlockCompressedPixelFormat(const AkPixelFormat format)
 {
 	return format >= AkPixelFormat::BC1_RGB_UNORM && format <= AkPixelFormat::BC7_SRGB;
 }
 
-inline constexpr size_t GetPixelSize(const AkPixelFormat format)
+constexpr size_t GetPixelSize(const AkPixelFormat format)
 {
 	switch (format)
 	{
@@ -229,7 +229,7 @@ inline constexpr size_t GetPixelSize(const AkPixelFormat format)
 	}
 }
 
-inline constexpr size_t GetCompressedBlockSize(const AkPixelFormat format)
+constexpr size_t GetCompressedBlockSize(const AkPixelFormat format)
 {
 	switch (format)
 	{
@@ -265,7 +265,7 @@ inline constexpr size_t GetCompressedBlockSize(const AkPixelFormat format)
 	}
 }
 
-inline constexpr size_t GetChannelCount(const AkPixelFormat format)
+constexpr size_t GetChannelCount(const AkPixelFormat format)
 {
 	switch (format)
 	{

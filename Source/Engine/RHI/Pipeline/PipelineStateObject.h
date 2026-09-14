@@ -16,5 +16,5 @@ public:
 	const vk::Pipeline& GetPipeline() const;
 
 private:
-	ForwardStorage<struct AkPipelineStorage, 8> m_Storage;
+	AkForwardStorage<struct AkPipelineStorage, 8> m_Storage;
 };

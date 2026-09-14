@@ -1,16 +1,17 @@
 #include "Buffer.h"
 #include "RHI/Device.h"
+#include "RHI/UploadManager.h"
 #include "RHI/Pipeline/BindlessResourcesManager.h"
 
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
 
-constexpr vk::BufferUsageFlags GetUsageFlags(const AkBufferFlags flags)
+extern vk::BufferUsageFlags GetBufferUsageFlags(const AkBufferFlags flags)
 {
-	vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eShaderDeviceAddress;
+	vk::BufferUsageFlags usageFlags = {};
 
 	if (flags & (AkBufferFlags_STRUCTURED))
-		usageFlags |= vk::BufferUsageFlagBits::eStorageBuffer;
+		usageFlags |= vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer;
 
 	if (flags & AkBufferFlags_CONSTANT)
 		usageFlags |= vk::BufferUsageFlagBits::eUniformBuffer;
@@ -40,17 +41,25 @@ struct AkBufferStorage
 	vk::DeviceAddress deviceAddress = {};
 };
 
+AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, const vk::Buffer& buffer)
+	: m_Descriptor(descriptor)
+{
+	m_FromNative = true;
+	m_Storage->buffer = buffer;
+}
+
 AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 	: m_Descriptor(descriptor)
 {
 	const vk::Device& device = AkDevice::GetDevice();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
 
-	VkBufferCreateInfo bufferCreateInfo = {};
-	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = m_Descriptor.size;
-	bufferCreateInfo.usage = static_cast<vk::BufferUsageFlags::MaskType>(GetUsageFlags(m_Descriptor.flags));
-	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	vk::BufferCreateInfo bufferCreateInfo = 
+	{
+		.size = m_Descriptor.size,
+		.usage = GetBufferUsageFlags(m_Descriptor.flags),
+		.sharingMode = vk::SharingMode::eExclusive,
+	};
 
 	const bool cpuAccess = m_Descriptor.flags & AkBufferFlags_CPU_ACCESS;
 	const bool fallbackToDevice = m_Descriptor.flags & AkBufferFlags_NO_SYSTEM_RAM;
@@ -77,16 +86,15 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 		allocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
 	VkBuffer buffer = VK_NULL_HANDLE;
-	VkResult result = vmaCreateBuffer(allocator, &bufferCreateInfo, &allocationCreateInfo, &buffer, &m_Storage->allocation, &allocationInfo);
+	VkResult result = vmaCreateBuffer(allocator, bufferCreateInfo, &allocationCreateInfo, &buffer, &m_Storage->allocation, &allocationInfo);
 	vk::detail::resultCheck(vk::Result(result), VULKAN_HPP_NAMESPACE_STRING "::Device::createBuffer");
-	
-	vk::BufferDeviceAddressInfo bufferAddressInfo = 
-	{
-		.buffer = buffer
-	};
-
 	m_Storage->buffer = buffer;
-	m_Storage->deviceAddress = device.getBufferAddress(bufferAddressInfo);
+
+	if (m_Descriptor.flags & AkBufferFlags_STRUCTURED)
+	{
+		const vk::BufferDeviceAddressInfo bufferAddressInfo = { .buffer = m_Storage->buffer };
+		m_Storage->deviceAddress = device.getBufferAddress(bufferAddressInfo);
+	}
 
 	if (cpuAccess)
 	{
@@ -103,13 +111,13 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 		}
 		else
 		{
-			//Should use a normal staging buffer to issue a copy of the data since it failed to allocate in host visible memory and allocation is in device local memory
-			//if (shouldCopyData)
+			if (shouldCopyData)
+				AkUploadManager::QueueBufferUpload(this, data);
 		}
 	}
 	else if (shouldCopyData)
 	{
-
+		AkUploadManager::QueueBufferUpload(this, data);
 	}
 
 	if (m_Descriptor.flags & (AkBufferFlags_STRUCTURED | AkBufferFlags_VERTEX | AkBufferFlags_INDIRECT))
@@ -118,14 +126,19 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 
 AkBuffer::~AkBuffer()
 {
+	AkBindlessResourcesManager::RemoveBuffer(this);
+
 	const vk::Device& device = AkDevice::GetDevice();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
 
-	if (m_Descriptor.flags & AkBufferFlags_CPU_ACCESS)
-		vmaUnmapMemory(allocator, m_Storage->allocation);
+	if (!m_FromNative)
+	{
+		if (m_Descriptor.flags & AkBufferFlags_CPU_ACCESS)
+			vmaUnmapMemory(allocator, m_Storage->allocation);
 
-	device.destroyBuffer(m_Storage->buffer);
-	vmaFreeMemory(allocator, m_Storage->allocation);
+		device.destroyBuffer(m_Storage->buffer);
+		vmaFreeMemory(allocator, m_Storage->allocation);
+	}
 }
 
 vk::DeviceAddress AkBuffer::GetDeviceAddress() const
@@ -136,4 +149,8 @@ vk::DeviceAddress AkBuffer::GetDeviceAddress() const
 const vk::Buffer& AkBuffer::GetBuffer() const
 {
 	return m_Storage->buffer;
+}
+
+void AkBuffer::SetDebugName(const std::string& name)
+{
 }

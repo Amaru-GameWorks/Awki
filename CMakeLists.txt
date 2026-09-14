@@ -4,7 +4,7 @@ project(Awki)
 # Put predefined targets into a specific folder
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
 
-# Set all targes to this folder by default
+# Set all targets to this folder by default
 set(CMAKE_FOLDER "_External Dependencies")
 
 # Adds the cmake folder that contains extra cmake scripts
@@ -29,8 +29,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	set(ALL_WARNINGS_AS_ERRORS "/external:anglebrackets /external:W0 /analyze:external- /WX /W4")
 
 	# Per Target Compiler Settings
-	set(CMAKE_CXX_FLAGS_DEBUG "/arch:AVX /MP /GR- /Od /wd4100 /wd4189 /wd4324 ${ALL_WARNINGS_AS_ERRORS}")
-	set(CMAKE_CXX_FLAGS_RELEASE "/arch:AVX /MP /GR- /Ot /wd4324 ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_DEBUG "/arch:AVX /MP /GR- /Od /Zc:preprocessor /wd4100 /wd4189 /wd4324 ${ALL_WARNINGS_AS_ERRORS}")
+	set(CMAKE_CXX_FLAGS_RELEASE "/arch:AVX /MP /GR- /Ot /Zc:preprocessor /wd4324 ${ALL_WARNINGS_AS_ERRORS}")
 	set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug>:EditAndContinue>")
 endif()
 
@@ -54,12 +54,17 @@ file(GLOB_RECURSE GAME_SOURCE CONFIGURE_DEPENDS "Source/Game/*.cpp" "Source/Game
 # Set ThirdParty include directories
 include_directories(SYSTEM
 	ThirdParty/glm
+	ThirdParty/meshoptimizer/src
+	ThirdParty/MikkTSpace
 	ThirdParty/SDL/include
+	ThirdParty/stb
+	ThirdParty/tinygltf
 	${Vulkan_INCLUDE_DIR}
 )
 
 # Set ThirdParty link targets
 list(APPEND THIRDPARTY_LINK_TARGETS
+	meshoptimizer
 	SDL3-static
 	Vulkan::Vulkan
 	${Slang_LIBRARY}
@@ -77,7 +82,7 @@ add_executable(Game ${GAME_SOURCE})
 # Set Game dependencies
 add_dependencies(Game Engine)
 
-# Set Game preprocessor definitions
+# Set preprocessor definitions
 target_compile_definitions(Game PRIVATE ${ENGINE_DEFINES})
 
 # Remove the Game target from the default folder

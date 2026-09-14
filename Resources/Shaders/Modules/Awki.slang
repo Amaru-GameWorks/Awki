@@ -1,56 +1,115 @@
-ByteAddressBuffer BindlessBuffers[] : register(t0, space0);
-RWByteAddressBuffer RWBindlessBuffers[] : register(u0, space0);
+ByteAddressBuffer BindlessBuffers[];
+RWByteAddressBuffer RWBindlessBuffers[];
+Texture2D BindlessTextures2d[];
+RWTexture2D RWBindlessTextures2d[];
+SamplerState BindlessSamplers[];
 
-Texture2D BindlessTextures2d[] : register(t0, space1);
-RWTexture2D RWBindlessTextures2d[] : register(u0, space1);
-
-SamplerState BindlessSamplers[] : register(s0, space2);
-
-typealias BBuffer = uint;
-typealias BTexture = int;
+property SamplerState gPointClampSampler { get { return BindlessSamplers[0]; } }
+property SamplerState gLinearClampSampler { get { return BindlessSamplers[1]; } }
 
 struct BufferHandle<T>
 {
-    uint index;
+    int32_t index;
 
-    __init(BBuffer handle)
+    T Get(int32_t i)
     {
-        index = handle;
-    }
-
-    T Get(uint i)
-    {
-        uint byteOffset = i * sizeof(T);
+        int32_t byteOffset = i * sizeof(T);
         return BindlessBuffers[index].Load<T>(byteOffset);
     }
 
-    void Set(uint i, T newValue)
+    void Set(int32_t i, T newValue)
     {
-        uint byteOffset = i * sizeof(T);
+        int32_t byteOffset = i * sizeof(T);
         RWBindlessBuffers[index].Store<T>(byteOffset, newValue);
     }
 
-    __subscript(uint i)->T
+    __subscript(int32_t i)->T
     { 
         get { return Get(i); } 
         set { Set(i, newValue); }
+    }
+
+    bool IsValid()
+    {
+        return index != -1;
     }
 }
 
 struct TextureHandle<T>
 {
-    uint index;
+    int32_t index;
 
-    __init(BTexture handle)
+    T Get()
     {
-        index = handle;
-    }
-
-    T operator()()
-    {
-        if(T is Texture2D || T is Texture2D<float4>)
+        if (T is Texture2D || T is Texture2D<float4>)
             return reinterpret<T>(BindlessTextures2d[index]);
-        if(T is RWTexture2D || T is RWTexture2D<float4>)
+        if (T is RWTexture2D || T is RWTexture2D<float4>)
             return reinterpret<T>(RWBindlessTextures2d[index]);
     }
+
+    bool IsValid()
+    {
+        return index != -1;
+    }
 }
+
+struct MaterialHandle<T>
+{
+    int32_t byteOffset;
+
+    T Get()
+    {
+        // BindlessBuffers[0] is reserved exclusively for materials
+        return BindlessBuffers[0].Load<T>(byteOffset);
+    }
+
+    bool IsValid()
+    {
+        return byteOffset != -1;
+    }
+}
+
+struct AwkiVertex
+{
+    float3 position;
+    float3 normal;
+    float2 uv;
+    float4 tangent;
+    float4 _Padding;
+};
+
+struct VertexBufferHandle
+{
+    int32_t index;
+    uint32_t offset;
+
+    AwkiVertex Get(int32_t i)
+    {
+        int32_t byteOffset = (offset + i) * sizeof(AwkiVertex);
+        return BindlessBuffers[index].Load<AwkiVertex>(byteOffset);
+    }
+
+    __subscript(int32_t i)->AwkiVertex
+    { get { return Get(i); } }
+
+    bool IsValid()
+    {
+        return index != -1;
+    }
+}
+
+struct DrawCallData<T>
+{
+    MaterialHandle<T> material;
+    VertexBufferHandle vertexBuffer;
+
+    T GetMaterial()
+    {
+        return material.Get();
+    }
+
+    AwkiVertex GetVertex(uint32_t index)
+    {
+        return vertexBuffer[index];
+    }
+};

@@ -69,13 +69,13 @@ AkCommandBuffer* AkCommandBufferAllocator::AllocateCommandBuffer(const AkDeviceQ
 	}
 }
 
-std::vector<AkCommandBuffer*> AkCommandBufferAllocator::AllocateCommandBuffers(const AkDeviceQueue deviceQueue, const uint32_t count)
+std::vector<AkCommandBuffer*> AkCommandBufferAllocator::AllocateCommandBuffers(const AkDeviceQueue deviceQueue, const size_t count)
 {
 	const vk::CommandBufferAllocateInfo bufferAllocateInfo =
 	{
 		.commandPool = sCommandPools[deviceQueue],
 		.level = vk::CommandBufferLevel::ePrimary,
-		.commandBufferCount = count
+		.commandBufferCount = static_cast<uint32_t>(count)
 	};
 
 	try
@@ -106,11 +106,27 @@ void AkCommandBufferAllocator::ReturnCommandBuffer(AkCommandBuffer* commandBuffe
 {
 	for (auto& [deviceQueue, commandBuffers] : m_CommandBuffers)
 	{
-		auto found = std::find_if(commandBuffers.begin(), commandBuffers.end(), [commandBuffer](const std::unique_ptr<AkCommandBuffer>& other) { return other.get() == commandBuffer; });
+		auto found = std::ranges::find_if(commandBuffers, [commandBuffer](const std::unique_ptr<AkCommandBuffer>& other) { return other.get() == commandBuffer; });
 		if (found != commandBuffers.end())
 		{
 			commandBuffers.erase(found);
 			return;
+		}
+	}
+}
+
+void AkCommandBufferAllocator::ReturnCommandBuffers(std::vector<AkCommandBuffer*>& commandBuffersToRemove)
+{
+	for (auto& commandBufferToRemove : commandBuffersToRemove)
+	{
+		for (auto& [deviceQueue, commandBuffers] : m_CommandBuffers)
+		{
+			auto found = std::ranges::find_if(commandBuffers, [commandBufferToRemove](const std::unique_ptr<AkCommandBuffer>& other) { return other.get() == commandBufferToRemove; });
+			if (found != commandBuffers.end())
+			{
+				commandBuffers.erase(found);
+				continue;
+			}
 		}
 	}
 }
