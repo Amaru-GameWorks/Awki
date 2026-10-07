@@ -109,8 +109,8 @@ void AkBindlessResourcesManager::AddBuffer(AkBuffer* buffer)
 
 	if (!sBuffersFreeList.empty())
 	{
-		buffer->m_BindlessIndex = sBuffersFreeList.front();
-		sBuffersFreeList.pop();
+		buffer->m_BindlessIndex = sBuffersFreeList.back();
+		sBuffersFreeList.pop_back();
 	}
 	else
 		buffer->m_BindlessIndex = sBuffersCount.fetch_add(1);
@@ -152,8 +152,8 @@ void AkBindlessResourcesManager::AddTexture(AkTexture* texture)
 
 	if (!sTexturesFreeList.empty())
 	{
-		texture->m_BindlessIndex = sTexturesFreeList.front();
-		sTexturesFreeList.pop();
+		texture->m_BindlessIndex = sTexturesFreeList.back();
+		sTexturesFreeList.pop_back();
 	}
 	else
 		texture->m_BindlessIndex = sTexturesCount.fetch_add(1);
@@ -204,8 +204,8 @@ void AkBindlessResourcesManager::AddSampler(AkSampler* sampler)
 
 	if (!sSamplersFreeList.empty())
 	{
-		sampler->m_BindlessIndex = sTexturesFreeList.front();
-		sSamplersFreeList.pop();
+		sampler->m_BindlessIndex = sTexturesFreeList.back();
+		sSamplersFreeList.pop_back();
 	}
 	else
 		sampler->m_BindlessIndex = sSamplersCount.fetch_add(1);
@@ -228,19 +228,19 @@ void AkBindlessResourcesManager::AddSampler(AkSampler* sampler)
 void AkBindlessResourcesManager::RemoveBuffer(AkBuffer* buffer)
 {
 	if (buffer->m_BindlessIndex != -1)
-		sBuffersFreeList.push(buffer->m_BindlessIndex);
+		sBuffersFreeList.push_back(buffer->m_BindlessIndex);
 }
 
 void AkBindlessResourcesManager::RemoveTexture(AkTexture* texture)
 {
 	if (texture->m_BindlessIndex != -1)
-		sTexturesFreeList.push(texture->m_BindlessIndex);
+		sTexturesFreeList.push_back(texture->m_BindlessIndex);
 }
 
 void AkBindlessResourcesManager::RemoveSampler(AkSampler* sampler)
 {
 	if (sampler->m_BindlessIndex != -1)
-		sSamplersFreeList.push(sampler->m_BindlessIndex);
+		sSamplersFreeList.push_back(sampler->m_BindlessIndex);
 }
 
 const vk::DescriptorSet& AkBindlessResourcesManager::GetDescriptorSet()

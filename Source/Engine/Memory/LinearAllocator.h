@@ -13,7 +13,7 @@ public:
 		m_End = m_Head + Size;
 	}
 
-	uint8_t* Allocate(size_t size, size_t alignment = 1) 
+	uint8_t* Allocate(size_t size, size_t alignment = 1)
 	{
 		uintptr_t raw = reinterpret_cast<uintptr_t>(m_Head);
 		uintptr_t aligned = (raw + alignment - 1) & ~(static_cast<uintptr_t>(alignment) - 1);

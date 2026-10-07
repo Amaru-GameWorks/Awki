@@ -1,7 +1,6 @@
 #pragma once
-#include <queue>
 #include <atomic>
-#include <limits>
+#include <vector>
 
 namespace vk
 {
@@ -33,11 +32,11 @@ public:
 
 private:
 	static inline std::atomic_int32_t sBuffersCount = 0;
-	static inline std::queue<int32_t> sBuffersFreeList = {};
+	static inline std::vector<int32_t> sBuffersFreeList = {};
 
 	static inline std::atomic_int32_t sTexturesCount = 0;
-	static inline std::queue<int32_t> sTexturesFreeList = {};
+	static inline std::vector<int32_t> sTexturesFreeList = {};
 
 	static inline std::atomic_int32_t sSamplersCount = 0;
-	static inline std::queue<int32_t> sSamplersFreeList = {};
+	static inline std::vector<int32_t> sSamplersFreeList = {};
 };

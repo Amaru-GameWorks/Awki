@@ -18,8 +18,8 @@ public:
 		uint32_t index = 0;
 		if (!m_FreeIndices.empty())
 		{
-			index = m_FreeIndices.front();
-			m_FreeIndices.pop();
+			index = m_FreeIndices.back();
+			m_FreeIndices.pop_back();
 		}
 		else
 		{
@@ -50,7 +50,7 @@ public:
 		archetype = nullptr;
 
 		++m_Generations[entity.id];
-		m_FreeIndices.push(entity.id);
+		m_FreeIndices.push_back(entity.id);
 	}
 
 	template <AkComponent T>
@@ -310,7 +310,7 @@ public:
 	}
 
 private:
-	static inline std::queue<uint32_t> m_FreeIndices;
+	static inline std::vector<uint32_t> m_FreeIndices;
 	static inline std::vector<uint32_t> m_Generations;
 
 	static inline std::vector<AkArchetype*> m_EntityRecords;
