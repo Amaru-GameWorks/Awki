@@ -1,11 +1,13 @@
 #include "Engine.h"
+#include "EngineContext.h"
+
 #include "Log.h"
 #include "RHI/Device.h"
 #include "RHI/Swapchain.h"
 #include "Platform/Window.h"
 #include "Platform/Events.h"
+#include "Scheduling/GameLoop.h"
 
-#include "ECS/Registry.h"
 #include "RHI/UploadManager.h"
 #include "RHI/Samplers/Sampler.h"
 #include "RHI/Pipeline/Material.h"
@@ -50,6 +52,7 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 	if (!AkDevice::Initialize())
 		throw std::runtime_error("Failed to initialize RHI Device!");
 
+	AkJobSystem::Initialize();
 	AkPipelineStateManager::Initialize();
 	AkBindlessResourcesManager::Initialize();
 
@@ -58,8 +61,9 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 	m_Window = std::make_unique<AkWindow>(descriptor.windowDescriptor);
 	m_Swapchain = std::make_unique<AkSwapchain>(m_Window.get());
 	
-	m_Scheduler.SetWindow(m_Window.get());
-	m_Scheduler.SetSwapchain(m_Swapchain.get());
+	AkGameLoop::Setup();
+	AkEngineContext::ProvideMainWindow(m_Window.get());
+	AkEngineContext::ProvideMainWindowSwapchain(m_Swapchain.get());
 
 	AkLogInfo("{} {} initializing", descriptor.gameName, descriptor.gameVersion);
 }
@@ -67,7 +71,6 @@ Awki::Awki(const AkInstanceDescriptor& descriptor)
 Awki::~Awki()
 {
 	AkLogInfo("Awki {} deinitializing", kEngineVersion);
-	AkDevice::WaitIdle();
 
 	m_Swapchain = nullptr;
 	m_Window = nullptr;
@@ -77,6 +80,7 @@ Awki::~Awki()
 
 	AkBindlessResourcesManager::Deinitialize();
 	AkPipelineStateManager::Deinitialize();
+	AkJobSystem::DeInitialize();
 	AkDevice::Deinitialize();
 	AkEvents::Deinitialize();
 	AkLog::Deinitialize();
@@ -85,6 +89,6 @@ Awki::~Awki()
 void Awki::Run()
 {
 	m_OnEngineStart.Broadcast();
-	m_Scheduler.Run();
+	AkGameLoop::Run();
 	m_OnEngineShutdown.Broadcast();
 }

@@ -1,5 +1,7 @@
 #include "Log.h"
+#include "Scheduling/JobSystemSynchronization.h"
 
+#include <array>
 #include <print>
 #include <format>
 #include <chrono>
@@ -61,9 +63,9 @@ void AkLog::Deinitialize()
 	WriteToLogFile(logMessage);
 }
 
-void AkLog::Print(AkLogLevel logLevel, const std::source_location& sourceLocation, std::string_view message)
+static inline AkJob PrintInternal(AkLogLevel logLevel, const std::source_location& sourceLocation, std::string_view message)
 {
-	static const char* kLogLevel[5] =
+	static constexpr std::array kLogLevel =
 	{
 		"INFO",
 		"TRACE",
@@ -79,10 +81,20 @@ void AkLog::Print(AkLogLevel logLevel, const std::source_location& sourceLocatio
 	const std::string fileNameOnly = filePath.substr(filePath.find_last_of("/\\") + 1, filePath.size());
 	const std::string logMessage = std::format("[{:%T}][{}][{}:{}] {}", now, kLogLevel[logLevelIndex], fileNameOnly, sourceLocation.line(), message);
 
+	static AkTicketMachine sTicketMachine(AkThreadType::Worker);
+	co_await sTicketMachine.WaitForTurn();
+
 	std::println("{}", logMessage);
 	WriteToLogFile(logMessage);
 
 #if DEBUG && _MSC_VER
 	OutputDebugString((logMessage + "\n").c_str());
 #endif
+
+	co_return;
+}
+
+void AkLog::Print(AkLogLevel logLevel, const std::source_location& sourceLocation, std::string_view message)
+{
+	PrintInternal(logLevel, sourceLocation, message);
 }

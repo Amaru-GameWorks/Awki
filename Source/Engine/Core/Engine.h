@@ -2,7 +2,6 @@
 #include "Version.h"
 #include "RHI/Swapchain.h"
 #include "Platform/Window.h"
-#include "Scheduler/Scheduler.h"
 #include "Utilities/Delegates.h"
 
 #include <memory>
@@ -34,7 +33,6 @@ private:
 	AkSimpleDelegate m_OnEngineStart = {};
 	AkSimpleDelegate m_OnEngineShutdown = {};
 
-	AkScheduler m_Scheduler = {};
 	std::unique_ptr<AkWindow> m_Window = nullptr;
 	std::unique_ptr<AkSwapchain> m_Swapchain = nullptr;
 };
