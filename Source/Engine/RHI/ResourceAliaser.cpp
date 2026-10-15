@@ -27,7 +27,6 @@ void AkResourceAliaser::CreateAliasedResources(AkAliasingGroup& aliasingGroup)
 	aliasingGroup.rhiResources = std::make_shared<AkAliasedResources>();
 
 	const vk::Device& device = AkDevice::GetDevice();
-	const vk::Instance& instance = AkDevice::GetInstance();
 	const VmaAllocator& allocator = AkDevice::GetMemoryAllocator();
 
 	std::vector<vk::MemoryRequirements> memoryRequirements;

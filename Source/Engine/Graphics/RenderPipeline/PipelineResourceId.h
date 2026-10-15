@@ -25,7 +25,7 @@ public:
 		return m_Hash;
 	}
 
-	const std::string& GetName() const
+	const std::string GetName() const
 	{
 #if DEBUG
 		return m_Name;
