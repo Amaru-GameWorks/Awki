@@ -95,7 +95,7 @@ class AkTexture
 	friend class AkBindlessResourcesManager;
 
 public:
-	AkTexture(const AkTextureDescriptor& descriptor, uint8_t* data);
+	AkTexture(const AkTextureDescriptor& descriptor, std::byte* data);
 	AkTexture(const AkTextureDescriptor& descriptor, const vk::Image& image);
 	~AkTexture();
 

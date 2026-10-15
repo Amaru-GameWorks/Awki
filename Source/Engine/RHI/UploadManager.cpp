@@ -67,7 +67,7 @@ AkAllocation FindFreeUploadSpace(size_t size)
 	return FindFreeUploadSpace(size);
 }
 
-void AkUploadManager::QueueBufferUpload(AkBuffer* buffer, uint8_t* data, size_t offset)
+void AkUploadManager::QueueBufferUpload(AkBuffer* buffer, std::byte* data, size_t offset)
 {
 	const AkBufferDescriptor& descriptor = buffer->GetDescriptor();
 	AkBufferUploadRequest& uploadRequest = sPendingBufferUploads.emplace_back();
@@ -79,10 +79,10 @@ void AkUploadManager::QueueBufferUpload(AkBuffer* buffer, uint8_t* data, size_t 
 		.allocation = FindFreeUploadSpace(descriptor.size)
 	};
 
-	memcpy(uploadRequest.allocation.stagingBuffer->GetMappedDataPointer() + uploadRequest.allocation.offset, data, descriptor.size);
+	std::memcpy(uploadRequest.allocation.stagingBuffer->GetMappedDataPointer() + uploadRequest.allocation.offset, data, descriptor.size);
 }
 
-void AkUploadManager::QueueTextureUpload(AkTexture* texture, uint8_t* data)
+void AkUploadManager::QueueTextureUpload(AkTexture* texture, std::byte* data)
 {
 	const size_t textureSize = texture->GetSize();
 
@@ -90,7 +90,7 @@ void AkUploadManager::QueueTextureUpload(AkTexture* texture, uint8_t* data)
 	uploadRequest.texture = texture;
 	uploadRequest.allocation = FindFreeUploadSpace(textureSize);
 
-	memcpy(uploadRequest.allocation.stagingBuffer->GetMappedDataPointer() + uploadRequest.allocation.offset, data, textureSize);
+	std::memcpy(uploadRequest.allocation.stagingBuffer->GetMappedDataPointer() + uploadRequest.allocation.offset, data, textureSize);
 }
 
 bool AkUploadManager::HasPendingUploads()

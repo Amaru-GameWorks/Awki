@@ -227,10 +227,10 @@ void AkModelDecoderInterface::ProcessMeshes()
 	const size_t indexTypeSize = (m_IndexType == AkIndexType::U32 ? sizeof(uint32_t) : sizeof(uint16_t));
 
 	m_IndexData.size = totalIndices * indexTypeSize;
-	m_IndexData.data = new uint8_t[m_IndexData.size];
+	m_IndexData.data = new std::byte[m_IndexData.size];
 
 	m_VertexData.size = totalVertexSize;
-	m_VertexData.data = new uint8_t[m_VertexData.size];
+	m_VertexData.data = new std::byte[m_VertexData.size];
 
 	size_t indexCount = 0;
 	size_t vertexOffset = 0;
@@ -250,24 +250,24 @@ void AkModelDecoderInterface::ProcessMeshes()
 			std::transform(data.indices.begin(), data.indices.end(), std::back_inserter(convertedIndices),
 				[](uint32_t& x) -> uint16_t { return static_cast<uint16_t>(x); });
 
-			memcpy(m_IndexData.data + (indexCount * indexTypeSize), convertedIndices.data(), mesh.indexCount * indexTypeSize);
+			std::memcpy(m_IndexData.data + (indexCount * indexTypeSize), convertedIndices.data(), mesh.indexCount * indexTypeSize);
 		}
 		else
-			memcpy(m_IndexData.data + (indexCount * indexTypeSize), data.indices.data(), mesh.indexCount * indexTypeSize);
+			std::memcpy(m_IndexData.data + (indexCount * indexTypeSize), data.indices.data(), mesh.indexCount * indexTypeSize);
 
 		size_t dataOffset = vertexOffset * sizeof(AwkiVertex);
 		for (size_t i = 0; i < data.positions.size(); ++i)
 		{
-			memcpy(m_VertexData.data + dataOffset, &data.positions[i], sizeof(glm::packed_vec3));
+			std::memcpy(m_VertexData.data + dataOffset, &data.positions[i], sizeof(glm::packed_vec3));
 			dataOffset += sizeof(glm::packed_vec3);
 
-			memcpy(m_VertexData.data + dataOffset, &data.normals[i], sizeof(glm::packed_vec3));
+			std::memcpy(m_VertexData.data + dataOffset, &data.normals[i], sizeof(glm::packed_vec3));
 			dataOffset += sizeof(glm::packed_vec3);
 
-			memcpy(m_VertexData.data + dataOffset, &data.uvs[i], sizeof(glm::packed_vec2));
+			std::memcpy(m_VertexData.data + dataOffset, &data.uvs[i], sizeof(glm::packed_vec2));
 			dataOffset += sizeof(glm::packed_vec2);
 
-			memcpy(m_VertexData.data + dataOffset, &data.tangents[i], sizeof(glm::packed_vec4));
+			std::memcpy(m_VertexData.data + dataOffset, &data.tangents[i], sizeof(glm::packed_vec4));
 			dataOffset += sizeof(glm::packed_vec4);
 
 			//Padding

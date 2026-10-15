@@ -58,10 +58,10 @@ class AkBuffer
 
 public:
 	AkBuffer(const AkBufferDescriptor& descriptor, const vk::Buffer& buffer);
-	AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data = nullptr);
+	AkBuffer(const AkBufferDescriptor& descriptor, std::byte* data = nullptr);
 	~AkBuffer();
 
-	uint8_t* GetMappedDataPointer() const { return m_MappedDataPointer; }
+	std::byte* GetMappedDataPointer() const { return m_MappedDataPointer; }
 	const AkBufferDescriptor& GetDescriptor() const { return m_Descriptor; }
 	int32_t GetBindlessIndex() const { return m_BindlessIndex; }
 	
@@ -75,7 +75,7 @@ private:
 	bool m_FromNative = false;
 	int32_t m_BindlessIndex = -1;
 	AkBufferDescriptor m_Descriptor = {};
-	uint8_t* m_MappedDataPointer = nullptr;
+	std::byte* m_MappedDataPointer = nullptr;
 	AkForwardStorage<struct AkBufferStorage, 24> m_Storage;
 };
 
@@ -90,46 +90,46 @@ public:
 class AkConstantBuffer : public AkBuffer
 {
 public:
-	AkConstantBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+	AkConstantBuffer(const size_t size, std::byte* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinConstantBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_CONSTANT | AkBufferFlags_CPU_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
 	AkConstantBuffer(T& data, AkBufferFlagBits extraFlags = {})
-		: AkConstantBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinConstantBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
+		: AkConstantBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinConstantBufferAlignment()), reinterpret_cast<std::byte*>(&data), extraFlags)
 	{ }
 };
 
 class AkStructuredBuffer : public AkBuffer
 {
 public:
-	AkStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+	AkStructuredBuffer(const size_t size, std::byte* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
 	AkStructuredBuffer(T& data, AkBufferFlagBits extraFlags = {})
-		: AkStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
+		: AkStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<std::byte*>(&data), extraFlags)
 	{ }
 };
 
 class AkRWStructuredBuffer : public AkBuffer
 {
 public:
-	AkRWStructuredBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+	AkRWStructuredBuffer(const size_t size, std::byte* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ RoundToNextMultiple(size, AkDevice::GetMinStructuredBufferAlignment()), static_cast<AkBufferFlags>(AkBufferFlags_STRUCTURED | AkBufferFlags_ALLOW_UNORDERED_ACCESS | AkBufferFlags_COPY_DESTINATION | extraFlags) }, data)
 	{ }
 
 	template<typename T>
 	AkRWStructuredBuffer(T& data, AkBufferFlagBits extraFlags = {})
-		: AkRWStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<uint8_t*>(&data), extraFlags)
+		: AkRWStructuredBuffer(RoundToNextMultiple(sizeof(T), AkDevice::GetMinStructuredBufferAlignment()), reinterpret_cast<std::byte*>(&data), extraFlags)
 	{ }
 };
 
 class AkVertexBuffer : public AkBuffer
 {
 public:
-	AkVertexBuffer(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
+	AkVertexBuffer(const size_t size, std::byte* data, AkBufferFlags extraFlags = {})
 		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_VERTEX | AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
 	{ }
 };
@@ -137,8 +137,8 @@ public:
 class AkIndexBufferBase : public AkBuffer
 {
 public:
-	AkIndexBufferBase(const size_t size, uint8_t* data, AkBufferFlags extraFlags = {})
-		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_INDEX | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
+	AkIndexBufferBase(const size_t size, std::byte* data, AkBufferFlags extraFlags = {})
+		: AkBuffer({ size, static_cast<AkBufferFlags>(AkBufferFlags_INDEX | AkBufferFlags_STRUCTURED | AkBufferFlags_COPY_DESTINATION | AkBufferFlags_NO_SYSTEM_RAM | extraFlags) }, data)
 	{ }
 
 	virtual AkIndexType GetType() const = 0;

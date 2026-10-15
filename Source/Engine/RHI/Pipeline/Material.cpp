@@ -85,12 +85,12 @@ AkMaterial::~AkMaterial()
 	}
 }
 
-void AkMaterial::SetData(uint8_t* data, size_t size)
+void AkMaterial::SetData(std::byte* data, size_t size)
 {
 	if (m_BindlessOffset != -1)
 	{
-		if (uint8_t* bufferPointer = sMaterialsBuffer->GetMappedDataPointer())
-			memcpy(bufferPointer + m_BindlessOffset, data, size);
+		if (std::byte* bufferPointer = sMaterialsBuffer->GetMappedDataPointer())
+			std::memcpy(bufferPointer + m_BindlessOffset, data, size);
 	}
 }
 

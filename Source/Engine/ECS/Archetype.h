@@ -10,7 +10,7 @@ struct AkComponentDescriptor
 {
 	size_t size = 0;
 	size_t alignment = 1;
-	std::function<void(uint8_t* componentAddress)> initializeComponent = nullptr;
+	std::function<void(void* componentAddress)> initializeComponent = nullptr;
 };
 
 struct AkArchetypeHash
@@ -138,8 +138,8 @@ public:
 			if (sourceArchetype.m_ComponentAllocators.contains(typeId))
 			{
 				AkExponentialPageAllocator& sourceAllocator = sourceArchetype.m_ComponentAllocators[typeId];
-				uint8_t* destination = allocator.Get(destinationIndex);
-				uint8_t* source = sourceAllocator.Get(sourceIndex);
+				std::byte* destination = allocator.Get(destinationIndex);
+				std::byte* source = sourceAllocator.Get(sourceIndex);
 				std::memcpy(destination, source, m_Descriptors[typeId].size);
 			}
 		}
@@ -211,7 +211,7 @@ private:
 		AkComponentDescriptor& descriptor = m_Descriptors[AkComponentTypeInfo<T>::TypeId()];
 		descriptor.size = sizeof(T);
 		descriptor.alignment = alignof(T);
-		descriptor.initializeComponent = [](uint8_t* address) 
+		descriptor.initializeComponent = [](void* address) 
 		{
 			new (address) T();
 		};

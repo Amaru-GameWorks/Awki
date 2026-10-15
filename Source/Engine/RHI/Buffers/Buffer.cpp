@@ -48,7 +48,7 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, const vk::Buffer& buffe
 	m_Storage->buffer = buffer;
 }
 
-AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
+AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, std::byte* data)
 	: m_Descriptor(descriptor)
 {
 	const vk::Device& device = AkDevice::GetDevice();
@@ -107,7 +107,7 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 			vk::detail::resultCheck(vk::Result(result), "vmaMapMemory");
 	
 			if (shouldCopyData)
-				memcpy(m_MappedDataPointer, data, m_Descriptor.size);
+				std::memcpy(m_MappedDataPointer, data, m_Descriptor.size);
 		}
 		else
 		{
@@ -120,7 +120,7 @@ AkBuffer::AkBuffer(const AkBufferDescriptor& descriptor, uint8_t* data)
 		AkUploadManager::QueueBufferUpload(this, data);
 	}
 
-	if (m_Descriptor.flags & (AkBufferFlags_STRUCTURED | AkBufferFlags_VERTEX | AkBufferFlags_INDIRECT))
+	if (m_Descriptor.flags & (AkBufferFlags_STRUCTURED | AkBufferFlags_VERTEX | AkBufferFlags_INDEX | AkBufferFlags_INDIRECT))
 		AkBindlessResourcesManager::AddBuffer(this);
 }
 

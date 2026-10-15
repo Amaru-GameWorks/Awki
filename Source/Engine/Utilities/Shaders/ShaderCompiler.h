@@ -23,7 +23,7 @@ public:
 	~AkShaderData();
 
 	size_t GetByteCodeSize() const;
-	const uint8_t* GetByteCode() const;
+	const std::byte* GetByteCode() const;
 	const struct AkShaderReflection& GetReflection() const;
 
 	operator bool() const;

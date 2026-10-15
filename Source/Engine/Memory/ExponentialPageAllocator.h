@@ -8,7 +8,7 @@
 struct AkPageAllocation
 {
 	size_t capacity = 0;
-	uint8_t* data = nullptr;
+	std::byte* data = nullptr;
 };
 
 class AkExponentialPageAllocator
@@ -52,7 +52,7 @@ public:
 
 		AkPageAllocation& allocation = m_Pages.emplace_back();
 		allocation.capacity = numElements;
-		allocation.data = static_cast<uint8_t*>(::operator new[](numElements * m_ElementSize, std::align_val_t(m_Alignment)));
+		allocation.data = static_cast<std::byte*>(::operator new[](numElements * m_ElementSize, std::align_val_t(m_Alignment)));
 
 		m_TotalCapacity += numElements;
 	}
@@ -103,7 +103,7 @@ public:
 		return m_Pages;
 	}
 
-	uint8_t* Get(size_t index)
+	std::byte* Get(size_t index)
 	{
 		AkAssert(index < m_TotalCapacity, "Element out of range");
 
@@ -139,8 +139,8 @@ public:
 
 	void Override(size_t indexA, size_t indexB)
 	{
-		uint8_t* elementA = Get(indexA);
-		uint8_t* elementB = Get(indexB);
+		std::byte* elementA = Get(indexA);
+		std::byte* elementB = Get(indexB);
 		std::memcpy(elementA, elementB, m_ElementSize);
 	}
 

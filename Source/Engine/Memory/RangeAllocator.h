@@ -23,7 +23,7 @@ public:
 		m_FreeBlock->next = nullptr;
 	}
 
-	uint8_t* Allocate(size_t allocationSize)
+	std::byte* Allocate(size_t allocationSize)
 	{
 		if (allocationSize < 8)
 		{
@@ -72,7 +72,7 @@ public:
 		else
 		{
 			//Split the block
-			FreeBlock* newBlock = reinterpret_cast<FreeBlock*>(reinterpret_cast<uint8_t*>(currentBestFit) + totalAllocationSize);
+			FreeBlock* newBlock = reinterpret_cast<FreeBlock*>(reinterpret_cast<std::byte*>(currentBestFit) + totalAllocationSize);
 			newBlock->size = currentBestFit->size - totalAllocationSize;
 			newBlock->next = currentBestFit->next;
 
@@ -85,7 +85,7 @@ public:
 		size_t* header = reinterpret_cast<size_t*>(currentBestFit);
 		*header = totalAllocationSize;
 
-		return reinterpret_cast<uint8_t*>(currentBestFit) + sizeof(size_t);
+		return reinterpret_cast<std::byte*>(currentBestFit) + sizeof(size_t);
 	}
 
 	template<typename T>
@@ -108,11 +108,11 @@ public:
 		if (!allocation)
 			return;
 
-		uint8_t* allocationStart = reinterpret_cast<uint8_t*>(allocation);
+		std::byte* allocationStart = reinterpret_cast<std::byte*>(allocation);
 
-		uint8_t* blockStart = allocationStart - sizeof(size_t);
+		std::byte* blockStart = allocationStart - sizeof(size_t);
 		size_t blockSize = *reinterpret_cast<size_t*>(blockStart);
-		uint8_t* blockEnd = blockStart + blockSize;
+		std::byte* blockEnd = blockStart + blockSize;
 
 		FreeBlock* nextFreeBlock = nullptr;
 		FreeBlock* previusFreeBlock = nullptr;
@@ -121,7 +121,7 @@ public:
 		FreeBlock* currentFreeBlock = m_FreeBlock;
 		while (currentFreeBlock != nullptr)
 		{
-			uint8_t* currentBlockAddress = reinterpret_cast<uint8_t*>(currentFreeBlock);
+			std::byte* currentBlockAddress = reinterpret_cast<std::byte*>(currentFreeBlock);
 			if (!nextFreeBlock && currentBlockAddress >= blockEnd)
 			{
 				nextFreeBlock = currentFreeBlock;
@@ -132,8 +132,8 @@ public:
 			currentFreeBlock = currentFreeBlock->next;
 		}
 
-		uint8_t* nextFreeBlockAddress = reinterpret_cast<uint8_t*>(nextFreeBlock);
-		uint8_t* previusFreeBlockAddress = reinterpret_cast<uint8_t*>(previusFreeBlock);
+		std::byte* nextFreeBlockAddress = reinterpret_cast<std::byte*>(nextFreeBlock);
+		std::byte* previusFreeBlockAddress = reinterpret_cast<std::byte*>(previusFreeBlock);
 
 		FreeBlock* workingBlock = nullptr;
 		if (!previusFreeBlock || (previusFreeBlockAddress + previusFreeBlock->size != blockStart))

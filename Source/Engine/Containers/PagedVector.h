@@ -104,10 +104,10 @@ public:
 	template<typename Function>
 	void ForEach(Function&& function)
 	{
-		std::vector<uint8_t*>& pages = m_Allocator.GetPages();
+		std::vector<std::byte*>& pages = m_Allocator.GetPages();
 
 		size_t remaining = m_Size;
-		for (uint8_t* page : pages)
+		for (std::byte* page : pages)
 		{
 			if (remaining == 0)
 				break;

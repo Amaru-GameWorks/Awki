@@ -6,8 +6,8 @@
 class AkUploadManager
 {
 public:
-	static void QueueBufferUpload(class AkBuffer* buffer, uint8_t* data, size_t offset = 0);
-	static void QueueTextureUpload(class AkTexture* texture, uint8_t* data);
+	static void QueueBufferUpload(class AkBuffer* buffer, std::byte* data, size_t offset = 0);
+	static void QueueTextureUpload(class AkTexture* texture, std::byte* data);
 
 	static bool HasPendingUploads();
 	static void FillCommandBuffer();

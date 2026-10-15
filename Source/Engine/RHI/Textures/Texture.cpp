@@ -274,7 +274,7 @@ struct AkTextureStorage
 	std::vector<vk::ImageView> multiSampledViews = {};
 };
 
-AkTexture::AkTexture(const AkTextureDescriptor& descriptor, uint8_t* data)
+AkTexture::AkTexture(const AkTextureDescriptor& descriptor, std::byte* data)
 	: m_Descriptor(descriptor)
 {
 	if (m_Descriptor.type == AkTextureType::CUBEMAP)

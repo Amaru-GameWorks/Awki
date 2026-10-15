@@ -19,8 +19,8 @@ public:
 	~AkMaterial();
 
 	template<typename T>
-	void SetData(T& data) { SetData(reinterpret_cast<uint8_t*>(&data), sizeof(T)); }
-	void SetData(uint8_t* data, size_t size);
+	void SetData(T& data) { SetData(reinterpret_cast<std::byte*>(&data), sizeof(T)); }
+	void SetData(std::byte* data, size_t size);
 
 	void SetConstantBuffer(class AkConstantBuffer* buffer, const uint32_t binding, const uint32_t set = 0);
 

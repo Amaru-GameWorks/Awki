@@ -236,9 +236,9 @@ size_t AkShaderData::GetByteCodeSize() const
 	return m_Storage->byteCode->getBufferSize();
 }
 
-const uint8_t* AkShaderData::GetByteCode() const
+const std::byte* AkShaderData::GetByteCode() const
 {
-	return static_cast<const uint8_t*>(m_Storage->byteCode->getBufferPointer());
+	return static_cast<const std::byte*>(m_Storage->byteCode->getBufferPointer());
 }
 
 const AkShaderReflection& AkShaderData::GetReflection() const

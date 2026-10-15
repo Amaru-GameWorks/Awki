@@ -12,10 +12,10 @@ public:
 	virtual ~AkTextureDecoderInterface() = default;
 
 	AkTextureDescriptor GetDescriptor() { return m_Descriptor; }
-	uint8_t* GetData() { return m_Data; }
+	std::byte* GetData() { return m_Data; }
 
 protected:
-	uint8_t* m_Data = nullptr;
+	std::byte* m_Data = nullptr;
 	std::filesystem::path m_Path = {};
 	AkTextureDescriptor m_Descriptor = {};
 };

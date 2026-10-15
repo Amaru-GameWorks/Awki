@@ -19,7 +19,7 @@ public:
 		if (m_Head < 0)
 			return nullptr;
 
-		uint8_t* slot = SlotHeader(m_Head);
+		std::byte* slot = SlotHeader(m_Head);
 		size_t nextHead = *reinterpret_cast<size_t*>(slot);
 		m_Head = nextHead;
 
@@ -34,7 +34,7 @@ public:
 
 	void Deallocate(T* allocation)
 	{
-		size_t index = (reinterpret_cast<uint8_t*>(allocation) - m_Storage) / sizeof(T);
+		size_t index = (reinterpret_cast<std::byte*>(allocation) - m_Storage) / sizeof(T);
 		*reinterpret_cast<size_t*>(SlotHeader(index)) = m_Head;
 		m_Head = index;
 	}
@@ -50,5 +50,5 @@ private:
 	size_t m_Head = 0;
 	alignas(T) uint8_t m_Storage[Count * sizeof(T)];
 
-	uint8_t* SlotHeader(size_t index) { return m_Storage + index * sizeof(T); }
+	std::byte* SlotHeader(size_t index) { return m_Storage + index * sizeof(T); }
 };
