@@ -1,25 +1,18 @@
 #pragma once
 #include "Core/Log.h"
-#include "Core/Assert.h"
-#include "Utilities/AkId.h"
+#include "Utilities/ThreadNaming.h"
 
 #include <mutex>
-#include <vector>
+#include <queue>
 #include <thread>
 #include <coroutine>
-#include <unordered_map>
 #include <condition_variable>
-
-class AkJobSystem;
 
 struct AkJob
 {
-	struct promise_type;
-	using handle_type = std::coroutine_handle<promise_type>;
-
 	struct promise_type
 	{
-		AkJob get_return_object() { return AkJob{ handle_type::from_promise(*this) }; }
+		AkJob get_return_object() { return AkJob{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
 		std::suspend_never initial_suspend() noexcept { return {}; }
 		std::suspend_never final_suspend() noexcept { return {}; }
 		void return_void() noexcept {}
@@ -40,17 +33,14 @@ struct AkJob
 		}
 	};
 
-	handle_type handle;
+	std::coroutine_handle<promise_type> handle;
 };
 
-struct AkJobInitialSuspend
+struct AkJobInitiallySuspended
 {
-	struct promise_type;
-	using handle_type = std::coroutine_handle<promise_type>;
-
 	struct promise_type
 	{
-		AkJobInitialSuspend get_return_object() { return AkJobInitialSuspend{ handle_type::from_promise(*this) }; }
+		AkJobInitiallySuspended get_return_object() { return AkJobInitiallySuspended{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
 		std::suspend_always initial_suspend() noexcept { return {}; }
 		std::suspend_never final_suspend() noexcept { return {}; }
 		void return_void() noexcept {}
@@ -71,7 +61,7 @@ struct AkJobInitialSuspend
 		}
 	};
 
-	handle_type handle;
+	std::coroutine_handle<promise_type> handle;
 };
 
 enum class AkThreadType
@@ -86,11 +76,13 @@ class AkJobSystem
 public:
 	static void Initialize(size_t numThreads = std::max(std::thread::hardware_concurrency() - 2, 1u))
 	{
+		SetThreadName("Main Thread");
+
 		for (size_t i = 0; i < numThreads; ++i)
 		{
-			m_Workers.emplace_back([]
+			m_Workers.emplace_back([=]
 			{
-				WorkerLoop();
+				WorkerLoop(i);
 			});
 		}
 
@@ -119,7 +111,7 @@ public:
 		Schedule(targetThread, job.handle);
 	}
 
-	static void Schedule(AkThreadType targetThread, AkJobInitialSuspend job)
+	static void Schedule(AkThreadType targetThread, AkJobInitiallySuspended job)
 	{
 		Schedule(targetThread, job.handle);
 	}
@@ -134,21 +126,21 @@ public:
 			case AkThreadType::Worker:
 			{
 				std::lock_guard<std::mutex> lock(m_WorkerJobQueueMutex);
-				m_WorkerJobQueue.push_back(handle);
+				m_WorkerJobQueue.push(handle);
 				m_WorkerConditional.notify_one();
 				break;
 			}
 			case AkThreadType::Main:
 			{
 				std::lock_guard<std::mutex> lock(m_MainJobQueueMutex);
-				m_MainJobQueue.push_back(handle);
+				m_MainJobQueue.push(handle);
 				m_MainConditional.notify_one();
 				break;
 			}
 			case AkThreadType::Render:
 			{
 				std::lock_guard<std::mutex> lock(m_RenderJobQueueMutex);
-				m_RenderJobQueue.push_back(handle);
+				m_RenderJobQueue.push(handle);
 				m_RenderConditional.notify_one();
 				break;
 			}
@@ -168,8 +160,8 @@ public:
 			if (m_MainJobQueue.empty())
 				return;
 
-			job = m_MainJobQueue.back();
-			m_MainJobQueue.pop_back();
+			job = m_MainJobQueue.front();
+			m_MainJobQueue.pop();
 		}
 
 		if (job)
@@ -177,8 +169,9 @@ public:
 	}
 
 private:
-	static void WorkerLoop()
+	static void WorkerLoop(size_t workerId)
 	{
+		SetThreadName("Worker Thread " + std::to_string(workerId));
 		while (!m_Stop.load(std::memory_order_relaxed))
 		{
 			std::coroutine_handle<> job;
@@ -192,8 +185,8 @@ private:
 				if (m_WorkerJobQueue.empty())
 					return;
 
-				job = m_WorkerJobQueue.back();
-				m_WorkerJobQueue.pop_back();
+				job = m_WorkerJobQueue.front();
+				m_WorkerJobQueue.pop();
 			}
 
 			if (job)
@@ -203,6 +196,7 @@ private:
 
 	static void RenderThreadLoop()
 	{
+		SetThreadName("Render Thread");
 		while (!m_Stop.load(std::memory_order_relaxed))
 		{
 			std::coroutine_handle<> job;
@@ -216,8 +210,8 @@ private:
 				if (m_RenderJobQueue.empty())
 					return;
 
-				job = m_RenderJobQueue.back();
-				m_RenderJobQueue.pop_back();
+				job = m_RenderJobQueue.front();
+				m_RenderJobQueue.pop();
 			}
 
 			if (job)
@@ -236,9 +230,9 @@ private:
 	static inline std::condition_variable m_WorkerConditional;
 	static inline std::condition_variable m_RenderConditional;
 
-	static inline std::vector<std::coroutine_handle<>> m_MainJobQueue;
-	static inline std::vector<std::coroutine_handle<>> m_WorkerJobQueue;
-	static inline std::vector<std::coroutine_handle<>> m_RenderJobQueue;
+	static inline std::queue<std::coroutine_handle<>> m_MainJobQueue;
+	static inline std::queue<std::coroutine_handle<>> m_WorkerJobQueue;
+	static inline std::queue<std::coroutine_handle<>> m_RenderJobQueue;
 
 	static inline std::atomic_bool m_Stop = false;
 };

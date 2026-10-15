@@ -1,6 +1,6 @@
 #include "RenderPipeline.h"
 #include "RHI/Swapchain.h"
-#include "RHI/CommandBuffers/CommandBufferAllocator.h"
+#include "RHI/CommandBuffers/CommandBuffer.h"
 
 void AkRenderPipeline::Initialize(AkSwapchain* swapchain, const glm::uvec2& renderTargetResolution)
 {
@@ -12,7 +12,7 @@ void AkRenderPipeline::Initialize(AkSwapchain* swapchain, const glm::uvec2& rend
 		m_CommandBuffers.resize(m_Swapchain->GetBackBuffersCount());
 }
 
-std::vector<class AkCommandBuffer*>& AkRenderPipeline::GetFrameCommandBuffers()
+std::vector<std::unique_ptr<AkCommandBuffer>>& AkRenderPipeline::GetFrameCommandBuffers()
 {
 	const uint8_t frameIndex = m_Swapchain->GetCurrentFrameIndex();
 	return m_CommandBuffers.at(frameIndex);
@@ -50,21 +50,17 @@ void AkRenderPipeline::Setup()
 
 void AkRenderPipeline::SetFrameData()
 {
-	std::vector<AkCommandBuffer*>& commandBuffers = GetFrameCommandBuffers();
-	if (commandBuffers.empty())
-	{
-		commandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, m_ExecutingRenderPasses.size());
-	}
-	else if (commandBuffers.size() < m_ExecutingRenderPasses.size())
+	std::vector<std::unique_ptr<AkCommandBuffer>>& commandBuffers = GetFrameCommandBuffers();
+	if (commandBuffers.empty() || commandBuffers.size() < m_ExecutingRenderPasses.size())
 	{
 		size_t neededCommandBufferCount = m_ExecutingRenderPasses.size() - commandBuffers.size();
-		std::vector<AkCommandBuffer*> extraCommandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, neededCommandBufferCount);
-		commandBuffers.insert_range(commandBuffers.end(), extraCommandBuffers);
+		for (size_t i = 0; i < neededCommandBufferCount; ++i)
+			commandBuffers.push_back(std::move(std::make_unique<AkCommandBuffer>(AkDeviceQueue::GRAPHICS)));
 	}
 
 	for (size_t i = 0; i < m_ExecutingRenderPasses.size(); ++i)
 	{
 		AkRenderPass* renderPass = m_ExecutingRenderPasses[i];
-		renderPass->SetCommandBuffer(commandBuffers[i]);
+		renderPass->SetCommandBuffer(commandBuffers[i].get());
 	}
 }

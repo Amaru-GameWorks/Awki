@@ -13,7 +13,7 @@ public:
 	virtual ~AkRenderPipeline() = default;
 
 	void Initialize(AkSwapchain* swapchain, const glm::uvec2& renderTargetResolution);
-	std::vector<class AkCommandBuffer*>& GetFrameCommandBuffers();
+	std::vector<std::unique_ptr<AkCommandBuffer>>& GetFrameCommandBuffers();
 	std::vector<class AkCommandBuffer*> GetExecutingCommandBuffers();
 	
 	const glm::uvec2& GetRenderTargetResolution() const { return m_RenderTargetResolution; }
@@ -36,5 +36,5 @@ protected:
 	class AkSwapchain* m_Swapchain = nullptr;
 	std::vector<AkRenderPass*> m_ExecutingRenderPasses;
 	std::vector<std::unique_ptr<AkRenderPass>> m_RenderPasses;
-	std::vector<std::vector<class AkCommandBuffer*>> m_CommandBuffers;
+	std::vector<std::vector<std::unique_ptr<AkCommandBuffer>>> m_CommandBuffers;
 };

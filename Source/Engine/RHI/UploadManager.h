@@ -1,6 +1,7 @@
 #pragma once
-#include <cstdint>
-#include <cstddef>
+#include "RHI/CommandBuffers/CommandBuffer.h"
+
+#include <memory>
 
 class AkUploadManager
 {
@@ -13,4 +14,7 @@ public:
 	static class AkCommandBuffer* GetCommandBuffer();
 
 	static void ReleaseBuffers();
+
+private:
+	static inline std::unique_ptr<AkCommandBuffer> m_CommandBuffer;
 };

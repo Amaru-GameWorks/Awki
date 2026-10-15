@@ -1,23 +1,21 @@
 #include "RenderThread.h"
 #include "FrameData.h"
 
-#include "Core/EngineContext.h"
 #include "RHI/UploadManager.h"
+#include "Core/EngineContext.h"
+#include "RHI/CommandBuffers/CommandBuffer.h"
 #include "Graphics/RenderPipeline/RenderPipeline.h"
-#include "RHI/CommandBuffers/CommandBufferAllocator.h"
 #include "Graphics/RenderPipeline/DirectAcyclicRenderGraph.h"
 
 //Temporary direct ECS access as there is no FrameData yet
 #include "ECS/Registry.h"
 #include "ECS/Components/Camera.h"
 
-#include <chrono>
-using namespace std::chrono_literals;
-
 static AkDirectAcyclicRenderGraph sRenderGraph;
+static std::vector<std::unique_ptr<AkCommandBuffer>> sFallbackCommandbuffers;
 static std::unordered_map<AkEntity, std::unique_ptr<AkRenderPipeline>> sRenderPipelines;
 
-AkJobInitialSuspend AkRenderThread::Execute(size_t frameIndex)
+AkJobInitiallySuspended AkRenderThread::Execute(size_t frameIndex)
 {
 	const AkFrameData& frameData = gFrameData[frameIndex % kMaxFramesInFlight];
 	AkLogTrace("RenderThread {}", frameData.frameIndex);
@@ -78,13 +76,20 @@ AkJobInitialSuspend AkRenderThread::Execute(size_t frameIndex)
 
 		if (groupedRenderPipelines.empty())
 		{
-			static std::vector<AkCommandBuffer*> sCommandBuffers = AkCommandBufferAllocator::AllocateCommandBuffers(AkDeviceQueue::GRAPHICS, mainWindowSwapchain.GetBackBuffersCount());
-			AkCommandBuffer*& commandBuffer = commandBuffersToSubmit.emplace_back(sCommandBuffers[mainWindowSwapchain.GetCurrentFrameIndex()]);
+			if (sFallbackCommandbuffers.empty())
+			{
+				for (size_t i = 0; i < mainWindowSwapchain.GetBackBuffersCount(); ++i)
+					sFallbackCommandbuffers.push_back(std::make_unique<AkCommandBuffer>(AkDeviceQueue::GRAPHICS));
+			}
+
+			AkRenderTarget* backBuffer = mainWindowSwapchain.GetCurrentBackBufferRenderTarget();
+			std::unique_ptr<AkCommandBuffer>& commandBuffer = sFallbackCommandbuffers[mainWindowSwapchain.GetCurrentFrameIndex()];
 
 			commandBuffer->Begin();
-			AkRenderTarget* backBuffer = mainWindowSwapchain.GetCurrentBackBufferRenderTarget();
 			commandBuffer->TransitionRenderTargetColorAttachments(backBuffer, AkResourceState::UNDEFINED, AkResourceState::PRESENT);
 			commandBuffer->End();
+
+			commandBuffersToSubmit.push_back(commandBuffer.get());
 		}
 		else
 		{
@@ -113,4 +118,6 @@ AkJobInitialSuspend AkRenderThread::Execute(size_t frameIndex)
 void AkRenderThread::FreeResources()
 {
 	sRenderGraph.FreeManagedResources();
+	sFallbackCommandbuffers.clear();
+	sRenderPipelines.clear();
 }

@@ -82,15 +82,18 @@ static inline AkJob PrintInternal(AkLogLevel logLevel, const std::source_locatio
 	const std::string logMessage = std::format("[{:%T}][{}][{}:{}] {}", now, kLogLevel[logLevelIndex], fileNameOnly, sourceLocation.line(), message);
 
 	static AkTicketMachine sTicketMachine(AkThreadType::Worker);
-	co_await sTicketMachine.WaitForTurn();
+	AkTicketMachine::Ticket ticket = sTicketMachine.GetTicket();
+	co_await ticket;
 
-	std::println("{}", logMessage);
-	WriteToLogFile(logMessage);
-
-#if DEBUG && _MSC_VER
+#if DEBUG
+#if _MSC_VER
 	OutputDebugString((logMessage + "\n").c_str());
 #endif
+	std::println("{}", logMessage);
+#endif
 
+	WriteToLogFile(logMessage);
+	ticket.Done();
 	co_return;
 }
 

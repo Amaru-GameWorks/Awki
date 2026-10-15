@@ -318,12 +318,12 @@ void AkDirectAcyclicRenderGraph::Compile(const std::multimap<uint8_t, AkRenderPi
 void AkDirectAcyclicRenderGraph::Execute(std::vector<AkCommandBuffer*>& commandBuffers)
 {
 	commandBuffers.reserve(commandBuffers.size() + m_SortedRenderPasses.size());
-
 	std::unordered_map<AkPipelineResourceId, AkResourceState> usedStates = {};
 
+	m_CountDownLatch.Reset(m_SortedRenderPasses.size());
 	for (AkRenderPass* renderPass : m_SortedRenderPasses)
 	{
-		AkCommandBuffer*& commandBuffer = commandBuffers.emplace_back(renderPass->GetCommandBuffer());
+		AkCommandBuffer* commandBuffer = renderPass->GetCommandBuffer();
 		commandBuffer->Begin();
 
 		const std::vector<AkResourceUsage>& resourceUsage = renderPass->GetResourcesUsage();
@@ -363,9 +363,19 @@ void AkDirectAcyclicRenderGraph::Execute(std::vector<AkCommandBuffer*>& commandB
 			commandBuffer->TransitionResources(bufferTransitions, textureTransitions);
 		}
 
-		renderPass->Execute(*this);
-		commandBuffer->End();
+		auto RenderPassJob = [](AkDirectAcyclicRenderGraph* renderGraph, AkRenderPass* renderPass) -> AkJobInitiallySuspended
+		{
+			renderPass->Execute(*renderGraph);
+			renderPass->GetCommandBuffer()->End();
+			renderGraph->m_CountDownLatch.Signal();
+			co_return;
+		};
+
+		AkJobSystem::Schedule(AkThreadType::Worker, RenderPassJob(this, renderPass));
+		commandBuffers.push_back(commandBuffer);
 	}
+
+	m_CountDownLatch.WaitBlocking();
 }
 
 bool AkDirectAcyclicRenderGraph::GetManagedResource(AkPipelineResourceId id, AkBuffer*& managedBuffer, AkTexture*& managedTexture)

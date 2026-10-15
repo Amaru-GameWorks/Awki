@@ -160,10 +160,50 @@ struct AkDrawCallData
 	uint32_t vertexBufferOffset;
 };
 
-AkCommandBuffer::AkCommandBuffer(const vk::CommandPool& commandPool, const vk::CommandBuffer& commandBuffer)
+AkCommandBuffer::AkCommandBuffer(const AkDeviceQueue deviceQueue)
 {
-	m_Storage->commandPool = commandPool;
-	m_Storage->commandBuffer = commandBuffer;
+	const vk::Device& device = AkDevice::GetDevice();
+
+	try
+	{
+		vk::CommandPoolCreateInfo poolCreateInfo =
+		{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer };
+
+		switch (deviceQueue)
+		{
+			case AkDeviceQueue::GRAPHICS:
+				poolCreateInfo.queueFamilyIndex = AkDevice::GetGraphicsQueueFamilyIndex();
+				break;
+			case AkDeviceQueue::COMPUTE:
+				poolCreateInfo.queueFamilyIndex = AkDevice::GetComputeQueueFamilyIndex();
+				break;
+			case AkDeviceQueue::TRANSFER:
+				poolCreateInfo.queueFamilyIndex = AkDevice::GetTransferQueueFamilyIndex();
+				break;
+		}
+
+		m_Storage->commandPool = device.createCommandPool(poolCreateInfo);
+	}
+	catch (const std::exception& exception)
+	{
+		AkLogCritical("Failed to create command pool: {}", exception.what());
+	}
+
+	const vk::CommandBufferAllocateInfo bufferAllocateInfo =
+	{
+		.commandPool = m_Storage->commandPool,
+		.level = vk::CommandBufferLevel::ePrimary,
+		.commandBufferCount = 1
+	};
+
+	try
+	{
+		m_Storage->commandBuffer = device.allocateCommandBuffers(bufferAllocateInfo)[0];
+	}
+	catch (const std::exception& exception)
+	{
+		AkLogCritical("Failed to allocate command buffer: {}", exception.what());
+	}
 }
 
 AkCommandBuffer::~AkCommandBuffer()
@@ -172,6 +212,8 @@ AkCommandBuffer::~AkCommandBuffer()
 
 	if (m_Storage->commandPool && m_Storage->commandBuffer)
 		device.freeCommandBuffers(m_Storage->commandPool, m_Storage->commandBuffer);
+	
+	device.destroyCommandPool(m_Storage->commandPool);
 }
 
 void AkCommandBuffer::Begin()

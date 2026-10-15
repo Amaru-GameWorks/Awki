@@ -1,6 +1,5 @@
 #include "Device.h"
 #include "Core/Log.h"
-#include "RHI/CommandBuffers/CommandBufferAllocator.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -80,15 +79,11 @@ bool AkDevice::Initialize()
 	if (!InitializeMemoryAllocator())
 		return false;
 
-	if (!AkCommandBufferAllocator::Initialize())
-		return false;
-
 	return true;
 }
 
 void AkDevice::Deinitialize()
 {
-	AkCommandBufferAllocator::Deinitialize();
 	vmaDestroyAllocator(sMemoryAllocator);
 
 #if DEBUG

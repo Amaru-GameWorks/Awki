@@ -2,7 +2,6 @@
 #include "Utilities/Size.h"
 #include "RHI/Buffers/Buffer.h"
 #include "RHI/Textures/Texture.h"
-#include "RHI/CommandBuffers/CommandBufferAllocator.h"
 
 #include <cstring>
 
@@ -133,11 +132,14 @@ void AkUploadManager::FillCommandBuffer()
 
 AkCommandBuffer* AkUploadManager::GetCommandBuffer()
 {
-	static AkCommandBuffer* sUploadCommandBuffer = AkCommandBufferAllocator::AllocateCommandBuffer(AkDeviceQueue::GRAPHICS);
-	return sUploadCommandBuffer;
+	if (m_CommandBuffer == nullptr)
+		m_CommandBuffer = std::make_unique<AkCommandBuffer>(AkDeviceQueue::GRAPHICS);
+	
+	return m_CommandBuffer.get();
 }
 
 void AkUploadManager::ReleaseBuffers()
 {
 	sUploadHeaps.clear();
+	m_CommandBuffer = nullptr;
 }

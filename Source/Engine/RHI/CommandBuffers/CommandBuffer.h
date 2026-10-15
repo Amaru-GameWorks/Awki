@@ -11,6 +11,13 @@ namespace vk
 	class CommandBuffer; 
 }
 
+enum class AkDeviceQueue : uint8_t
+{
+	GRAPHICS,
+	COMPUTE,
+	TRANSFER
+};
+
 struct AkResourceTransition
 {
 	void* resource = nullptr;
@@ -20,10 +27,8 @@ struct AkResourceTransition
 
 class AkCommandBuffer
 {
-	friend class AkCommandBufferAllocator;
-
 public:
-	AkCommandBuffer(const vk::CommandPool& commandPool, const vk::CommandBuffer& commandBuffer);
+	AkCommandBuffer(const AkDeviceQueue deviceQueue);
 	~AkCommandBuffer();
 
 	void Begin();

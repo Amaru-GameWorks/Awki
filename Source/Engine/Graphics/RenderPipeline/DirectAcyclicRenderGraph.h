@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/ResourceAliaser.h"
+#include "Scheduling/JobSystemSynchronization.h"
 
 #include <map>
 #include <vector>
@@ -17,6 +18,7 @@ public:
 
 private:
 	class AkRenderTarget* m_BackBuffer = nullptr;
+	AkCountdownLatch m_CountDownLatch = { AkThreadType::Render };
 
 	std::vector<AkAliasingGroup> m_AliasingGroups = {};
 	std::vector<class AkRenderPass*> m_SortedRenderPasses = {};
